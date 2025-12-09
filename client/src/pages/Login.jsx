@@ -2,26 +2,37 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import { useNavigate } from 'react-router-dom' // <-- 1. YENİ: Yönlendirme aracı
 
 function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  
+  const navigate = useNavigate() // <-- 2. YENİ: Aracı başlattık
 
   const handleLogin = async (e) => {
     e.preventDefault()
     try {
-      // Backend'e istek atıyoruz
+      // Backend'e istek at
       const response = await axios.post('http://127.0.0.1:5000/api/auth/login', {
         username: username,
         password: password
       })
       
       // Başarılı olursa
-      toast.success(response.data.message)
-      localStorage.setItem('token', response.data.access_token) // Token'ı kaydet
+      toast.success(`Hoş geldin ${username}!`) // İsimle karşılama
+      
+      // Token'ı kaydet
+      localStorage.setItem('token', response.data.access_token) 
+
+      // <-- 3. YENİ: 1.5 saniye sonra Ana Sayfaya gönder
+      setTimeout(() => {
+        navigate('/') 
+        // Sayfayı yenile ki Navbar güncellensin (Profilim butonu gelsin)
+        window.location.reload() 
+      }, 1500)
 
     } catch (error) {
-      // Hata olursa
       if (error.response) {
         toast.error(error.response.data.message || 'Giriş başarısız')
       } else {

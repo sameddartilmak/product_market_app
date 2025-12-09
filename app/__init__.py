@@ -5,7 +5,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
-from .config import Config  # Az önce oluşturduğumuz config dosyasını import et
+from flask_cors import CORS # Import tamam
+from .config import Config
 
 # Eklentileri başlatıyoruz
 db = SQLAlchemy()
@@ -16,15 +17,22 @@ jwt = JWTManager()
 def create_app(config_class=Config):
     """Uygulama Fabrikası (Application Factory)"""
     app = Flask(__name__)
+    
+    # ---------------------------------------------------------
+    # EKSİK OLAN KISIM BURASIYDI (CORS AYARI)
+    # Tüm rotalara (/*) her yerden gelen isteklere izin veriyoruz
+    CORS(app, resources={r"/*": {"origins": "*"}})
+    # ---------------------------------------------------------
+
     app.config.from_object(config_class)
 
     # Eklentileri uygulama ile ilişkilendiriyoruz
     db.init_app(app)
-    migrate.init_app(app, db) # migrate'i db ile ilişkilendir
+    migrate.init_app(app, db)
     bcrypt.init_app(app)
     jwt.init_app(app)
 
-    # --- Blueprint Kayıtları Buraya Gelecek ---
+    # --- Blueprint Kayıtları ---
     
     # 1. Auth (Kullanıcı Giriş/Kayıt) Blueprint'i
     from .api.auth import auth_bp
