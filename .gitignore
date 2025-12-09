@@ -1,0 +1,20 @@
+# Python Sanal Ortamı (KESİNLİKLE GİTMEMELİ)
+venv/
+__pycache__/
+*.pyc
+
+# React Kütüphaneleri (KESİNLİKLE GİTMEMELİ)
+client/node_modules/
+client/dist/
+
+# Sistem Dosyaları
+.DS_Store
+.env
+
+# İşletim sistemi dosyaları
+.DS_Store
+Thumbs.db
+
+# IDE/Editör dosyaları
+.vscode/
+.idea/
