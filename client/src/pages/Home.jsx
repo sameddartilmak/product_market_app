@@ -2,10 +2,12 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import { useNavigate } from 'react-router-dom'
 
 function Home() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   useEffect(() => {
     fetchProducts()
@@ -80,7 +82,10 @@ function Home() {
                 <div style={styles.footer}>
                   {/* Fiyat undefined ise 0 göster */}
                   <span style={styles.price}>{product.price || 0} TL</span>
-                  <button style={styles.button}>Detay</button>
+                  <button 
+                    style={styles.button} 
+                    onClick={() => navigate(`/product/${product.id}`)}>Detay
+                  </button>
                 </div>
               </div>
             </div>

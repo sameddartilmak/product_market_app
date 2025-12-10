@@ -9,6 +9,7 @@ import Home from './pages/Home'
 import AddProduct from './pages/AddProduct' // <-- 1. YENİ
 import ProtectedRoute from './components/ProtectedRoute'
 import Navbar from './components/Navbar'
+import ProductDetail from './pages/ProductDetail'
 
 function App() {
   return (
@@ -27,6 +28,11 @@ function App() {
               <AddProduct />
             </ProtectedRoute>
         } />
+        <Route path="/product/:id" element={
+          <ProtectedRoute>
+          <ProductDetail />
+       </ProtectedRoute>
+} />
         
         <Route path="/login" element={<Login />} />
       </Routes>

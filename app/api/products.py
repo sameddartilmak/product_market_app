@@ -154,3 +154,25 @@ def delete_product(product_id):
         }), 500
 
     return jsonify({'message': 'Ürün başarıyla silindi.'}), 200
+@products_bp.route('/<int:product_id>', methods=['GET'])
+def get_single_product(product_id):
+    """Tek bir ürünün detaylarını getirir."""
+    product = Product.query.get_or_404(product_id)
+
+    # Ürünün sahibini de bulalım ki detay sayfasında gösterelim
+    owner = User.query.get(product.owner_id)
+
+    return jsonify({
+        'id': product.id,
+        'title': product.title,
+        'description': product.description,
+        'category': product.category,
+        'price': product.price,
+        'image_url': product.image_url,
+        'status': product.status,
+        'created_at': product.created_at,
+        'owner': {
+            'username': owner.username,
+            'email': owner.email
+        }
+    }), 200
