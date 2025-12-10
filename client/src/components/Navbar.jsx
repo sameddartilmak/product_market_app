@@ -1,53 +1,43 @@
-// client/src/components/Navbar.jsx
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 
-
 function Navbar() {
   const navigate = useNavigate()
-  
-  // Basit kontrol: Token varsa giriş yapılmıştır
   const isLoggedIn = !!localStorage.getItem('token')
 
   const handleLogout = () => {
-    // 1. Kimliği (Token) sil
     localStorage.removeItem('token')
-    
-    // 2. Bilgi ver
     toast.info('Çıkış yapıldı 👋')
-    
-    // 3. Giriş sayfasına yönlendir
     navigate('/login')
-    
-    // 4. Sayfayı yenile (Navbar'ın güncellenmesi için en basit yol)
     window.location.reload()
   }
 
   return (
-    <nav style={styles.navbar}>
-      <div style={styles.container}>
-        {/* Logo Sol Tarafta */}
-        <Link to="/" style={styles.brand}>
+    <nav className="navbar">
+      <div className="navbar-container">
+        {/* Logo */}
+        <Link to="/" className="nav-brand">
           📦 Kiralama App
         </Link>
 
-        {/* Linkler Sağ Tarafta */}
-        <div style={styles.navLinks}>
+        {/* Linkler */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
           {isLoggedIn ? (
             <>
-              <Link to="/" style={styles.link}>Ana Sayfa</Link>
+              <Link to="/" className="nav-link">Ana Sayfa</Link>
+              <Link to="/profile" className="nav-link">Profilim</Link>
               
-              {/* Dikkat Çeken İlan Ver Butonu */}
-              <Link to="/add-product" style={styles.addButton}>
+              {/* Özel Buton */}
+              <Link to="/add-product" className="btn btn-success" style={{ marginLeft: '20px', textDecoration:'none' }}>
                 + İlan Ver
               </Link>
-              <Link to="/profile" style={styles.link}>Profilim</Link>
-              <button onClick={handleLogout} style={styles.logoutBtn}>
-                Çıkış Yap
+              
+              <button onClick={handleLogout} className="btn btn-danger" style={{ marginLeft: '15px' }}>
+                Çıkış
               </button>
             </>
           ) : (
-            <Link to="/login" style={styles.link}>Giriş Yap</Link>
+            <Link to="/login" className="nav-link">Giriş Yap</Link>
           )}
         </div>
       </div>

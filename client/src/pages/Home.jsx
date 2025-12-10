@@ -52,42 +52,47 @@ function Home() {
   }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <h1 style={{ textAlign: 'center', marginBottom: '30px', color: '#333' }}>Vitrin</h1>
+    <div>
+      <h1 style={{ marginBottom: '30px', color: '#1f2937' }}>Vitrin</h1>
 
       {products.length === 0 ? (
-        <div style={{ textAlign: 'center', color: '#666', marginTop: '50px' }}>
+        <div style={{ textAlign: 'center', marginTop: '50px' }}>
           <h3>⚠️ Ürün listesi boş veya yüklenemedi.</h3>
-          <p>Lütfen Console (F12) ekranını kontrol et.</p>
         </div>
       ) : (
-        <div style={styles.grid}>
+        // CSS Grid Sınıfı
+        <div className="card-grid">
           {products.map((product) => (
-            <div key={product.id} style={styles.card}>
-              <div style={styles.imageContainer}>
+            // CSS Kart Sınıfı
+            <div key={product.id} className="product-card">
+              
+              <div className="card-image-container">
                 {product.image_url ? (
-                  <img src={product.image_url} alt={product.title} style={styles.image} />
+                  <img src={product.image_url} alt={product.title} className="card-image" />
                 ) : (
-                  <div style={styles.placeholder}>Resim Yok</div>
+                  <span>Resim Yok</span>
                 )}
               </div>
-              <div style={styles.cardBody}>
-                <h3 style={styles.title}>{product.title}</h3>
-                <p style={styles.description}>
-                   {/* Tanım yoksa boş string kullan ki hata vermesin */}
-                  {product.description && product.description.length > 50 
-                    ? product.description.substring(0, 50) + '...' 
-                    : product.description || 'Açıklama yok'}
+
+              <div className="card-content">
+                <h3 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>{product.title}</h3>
+                <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '15px', flex: 1 }}>
+                  {product.description ? product.description.substring(0, 60) + '...' : '...'}
                 </p>
-                <div style={styles.footer}>
-                  {/* Fiyat undefined ise 0 göster */}
-                  <span style={styles.price}>{product.price || 0} TL</span>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#10b981' }}>
+                    {product.price} TL
+                  </span>
                   <button 
-                    style={styles.button} 
-                    onClick={() => navigate(`/product/${product.id}`)}>Detay
+                    className="btn btn-primary"
+                    onClick={() => navigate(`/product/${product.id}`)}
+                  >
+                    Detay
                   </button>
                 </div>
               </div>
+
             </div>
           ))}
         </div>

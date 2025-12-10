@@ -1,14 +1,13 @@
-// client/src/pages/Profile.jsx
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import { useNavigate } from 'react-router-dom'
 
 function Profile() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [username, setUsername] = useState('Kullanıcı')
+  const navigate = useNavigate()
 
-  // Token'dan bilgileri çekip API'ye istek atacağız
   useEffect(() => {
     fetchMyProducts()
   }, [])
@@ -16,17 +15,27 @@ function Profile() {
   const fetchMyProducts = async () => {
     try {
       const token = localStorage.getItem('token')
+      // Token yoksa direkt login'e at
+      if (!token) {
+        navigate('/login')
+        return
+      }
+
       const config = { headers: { Authorization: `Bearer ${token}` } }
 
-      // 1. Benim ürünlerimi çek
       const response = await axios.get('http://127.0.0.1:5000/api/products/my-products', config)
       setProducts(response.data)
       setLoading(false)
-      
-      // (İsteğe bağlı) Kullanıcı adını token'dan veya başka bir endpointten alabiliriz.
-      // Şimdilik basitçe "Değerli Kullanıcımız" diyelim veya localStorage'da tuttuysak oradan alalım.
     } catch (error) {
-      toast.error('Profil bilgileri yüklenemedi')
+      console.error(error)
+      // Eğer 401 hatası alırsak (Token bitmişse) çıkış yaptır
+      if (error.response && error.response.status === 401) {
+        toast.error('Oturum süreniz doldu, lütfen tekrar giriş yapın.')
+        localStorage.removeItem('token')
+        navigate('/login')
+      } else {
+        toast.error('Profil bilgileri yüklenemedi')
+      }
       setLoading(false)
     }
   }
@@ -41,48 +50,48 @@ function Profile() {
       await axios.delete(`http://127.0.0.1:5000/api/products/${productId}`, config)
       
       toast.success('Ürün silindi!')
-      // Listeyi güncelle (Silinen ürünü ekrandan kaldır)
       setProducts(products.filter(p => p.id !== productId))
-      
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Silme işlemi başarısız')
+      toast.error('Silme işlemi başarısız')
     }
   }
 
   if (loading) return <div style={{textAlign:'center', marginTop:'50px'}}>Yükleniyor...</div>
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '40px auto', padding: '20px' }}>
-      
-      {/* Profil Başlığı */}
-      <div style={styles.header}>
-        <h1>👤 Profilim</h1>
-        <p>Eklediğiniz ilanları buradan yönetebilirsiniz.</p>
+    <div>
+      <div style={{ textAlign: 'center', marginBottom: '40px', padding: '30px', background: 'white', borderRadius: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+        <h1 style={{ color: '#4f46e5' }}>👤 Profilim</h1>
+        <p style={{ color: '#6b7280' }}>Hoş geldin! İlanlarını buradan yönetebilirsin.</p>
       </div>
 
-      <h2 style={{ borderBottom: '2px solid #eee', paddingBottom: '10px' }}>İlanlarım ({products.length})</h2>
+      <h3 style={{ marginBottom: '20px', borderBottom: '2px solid #e5e7eb', paddingBottom: '10px' }}>
+        Yayındaki İlanlarım ({products.length})
+      </h3>
 
       {products.length === 0 ? (
-        <p style={{ marginTop: '20px', color: '#666' }}>Henüz hiç ilan vermediniz.</p>
+        <p style={{ color: '#666' }}>Henüz hiç ilan vermediniz.</p>
       ) : (
-        <div style={styles.grid}>
+        // Yeni CSS Grid Yapısı
+        <div className="card-grid">
           {products.map((product) => (
-            <div key={product.id} style={styles.card}>
-              <div style={styles.imageContainer}>
+            <div key={product.id} className="product-card">
+              <div className="card-image-container" style={{ height: '150px' }}>
                 {product.image_url ? (
-                  <img src={product.image_url} alt={product.title} style={styles.image} />
+                  <img src={product.image_url} alt={product.title} className="card-image" />
                 ) : (
-                  <div style={styles.placeholder}>Resim Yok</div>
+                  <span>Resim Yok</span>
                 )}
               </div>
-              <div style={styles.cardBody}>
-                <h4>{product.title}</h4>
-                <p style={{ color: '#2ecc71', fontWeight: 'bold' }}>{product.price} TL</p>
-                <div style={styles.actions}>
-                    {/* Silme Butonu */}
+              <div className="card-content">
+                <h4 style={{ marginBottom: '5px' }}>{product.title}</h4>
+                <p style={{ color: '#10b981', fontWeight: 'bold', marginBottom: '10px' }}>{product.price} TL</p>
+                
+                <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end' }}>
                     <button 
                       onClick={() => handleDelete(product.id)}
-                      style={styles.deleteButton}
+                      className="btn btn-danger"
+                      style={{ padding: '5px 15px', fontSize: '0.9rem' }}
                     >
                       Sil 🗑️
                     </button>

@@ -19,41 +19,19 @@ function App() {
     <Router>
       <ToastContainer position="top-right" autoClose={3000} />
       
-      {/* Navbar her sayfada sabit durur */}
       <Navbar /> 
 
-      <Routes>
-        {/* 1. Ana Sayfa */}
-        <Route path="/" element={
-            <ProtectedRoute>
-              <Home />
-            </ProtectedRoute>
-        } />
-
-        {/* 2. Ürün Ekleme */}
-        <Route path="/add-product" element={
-            <ProtectedRoute>
-              <AddProduct />
-            </ProtectedRoute>
-        } />
-        
-        {/* 3. Ürün Detay */}
-        <Route path="/product/:id" element={
-            <ProtectedRoute>
-               <ProductDetail />
-            </ProtectedRoute>
-        } />
-
-        {/* 4. Profil Sayfası (Sorunlu olan kısım burasıydı) */}
-        <Route path="/profile" element={
-            <ProtectedRoute>
-               <Profile />
-            </ProtectedRoute>
-        } />
-        
-        {/* 5. Giriş Yap */}
-        <Route path="/login" element={<Login />} />
-      </Routes>
+      {/* İŞTE SİHİRLİ DOKUNUŞ BURADA 👇 */}
+      <div className="main-container">
+        <Routes>
+          {/* ... rotaların aynen kalsın ... */}
+          <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/add-product" element={<ProtectedRoute><AddProduct /></ProtectedRoute>} />
+          <Route path="/product/:id" element={<ProtectedRoute><ProductDetail /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/login" element={<Login />} />
+        </Routes>
+      </div>
     </Router>
   )
 }
