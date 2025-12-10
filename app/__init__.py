@@ -1,11 +1,9 @@
-# /app/__init__.py
-
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
-from flask_cors import CORS # Import tamam
+from flask_cors import CORS
 from .config import Config
 
 # Eklentileri başlatıyoruz
@@ -18,11 +16,11 @@ def create_app(config_class=Config):
     """Uygulama Fabrikası (Application Factory)"""
     app = Flask(__name__)
     
-    # ---------------------------------------------------------
-    CORS(app, resources={r"/*": {"origins": "*"}})
- 
-
+    # Uygulama Konfigürasyonu
     app.config.from_object(config_class)
+
+    # CORS Ayarları (Tüm originlere izin verir)
+    CORS(app, resources={r"/*": {"origins": "*"}})
 
     # Eklentileri uygulama ile ilişkilendiriyoruz
     db.init_app(app)
@@ -31,24 +29,23 @@ def create_app(config_class=Config):
     jwt.init_app(app)
 
     # --- Blueprint Kayıtları ---
-    
-    # 1. Auth (Kullanıcı Giriş/Kayıt) Blueprint'i
+    # Importları tutarlı hale getirdik (hepsi relative import)
+
+    # 1. Auth Blueprint
     from .api.auth import auth_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
-    # 2. Products (Ürünler) Blueprint'i
+    # 2. Products Blueprint
     from .api.products import products_bp
     app.register_blueprint(products_bp, url_prefix='/api/products')
 
-    # 3. Listings (İlanlar) Blueprint'i
-    from .api.listings import listings_bp
-    app.register_blueprint(listings_bp, url_prefix='/api/listings')
-    
+    # 3. Swap Blueprint
     from .api.swap import swap_bp
     app.register_blueprint(swap_bp, url_prefix='/api/swap')
     
-    from .api.transactions import transactions_bp
-    app.register_blueprint(transactions_bp, url_prefix='/api/transactions')
+    # 4. Genel API Routes (Varsa)
+    from .api.routes import api_bp
+    app.register_blueprint(api_bp, url_prefix='/api')
 
     @app.route('/')
     def hello():
