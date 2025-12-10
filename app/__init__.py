@@ -19,10 +19,8 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     
     # ---------------------------------------------------------
-    # EKSİK OLAN KISIM BURASIYDI (CORS AYARI)
-    # Tüm rotalara (/*) her yerden gelen isteklere izin veriyoruz
     CORS(app, resources={r"/*": {"origins": "*"}})
-    # ---------------------------------------------------------
+ 
 
     app.config.from_object(config_class)
 

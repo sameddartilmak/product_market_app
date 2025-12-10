@@ -53,8 +53,10 @@ class Product(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
     category = db.Column(db.String(100))
+    price = db.Column(db.Float, default=0.0)  # Fiyat sütunu (Varsayılan 0.0)
     image_url = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='available')
     
     # Yabancı Anahtar (Foreign Key): Bu ürünün sahibini 'users' tablosuna bağlar
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
