@@ -154,6 +154,29 @@ def delete_product(product_id):
         }), 500
 
     return jsonify({'message': 'Ürün başarıyla silindi.'}), 200
+
+@products_bp.route('/my-products', methods=['GET'])
+@jwt_required()
+def get_my_products():
+    """Giriş yapmış kullanıcının kendi ürünlerini listeler."""
+    current_user_id = int(get_jwt_identity())
+    
+    # Sadece benim ürünlerimi getir
+    my_products = Product.query.filter_by(owner_id=current_user_id).all()
+    
+    output = []
+    for product in my_products:
+        output.append({
+            'id': product.id,
+            'title': product.title,
+            'price': product.price,
+            'image_url': product.image_url,
+            'status': product.status,
+            'category': product.category
+        })
+    
+    return jsonify(output), 200
+
 @products_bp.route('/<int:product_id>', methods=['GET'])
 def get_single_product(product_id):
     """Tek bir ürünün detaylarını getirir."""

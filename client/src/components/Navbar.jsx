@@ -41,7 +41,7 @@ function Navbar() {
               <Link to="/add-product" style={styles.addButton}>
                 + İlan Ver
               </Link>
-              
+              <Link to="/profile" style={styles.link}>Profilim</Link>
               <button onClick={handleLogout} style={styles.logoutBtn}>
                 Çıkış Yap
               </button>

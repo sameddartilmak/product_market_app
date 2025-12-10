@@ -3,42 +3,59 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
-
+// Sayfalar
 import Login from './pages/Login'
 import Home from './pages/Home'
-import AddProduct from './pages/AddProduct' // <-- 1. YENİ
-import ProtectedRoute from './components/ProtectedRoute'
+import AddProduct from './pages/AddProduct'
+import ProductDetail from './pages/ProductDetail' // Detay sayfası
+import Profile from './pages/Profile'             // <-- Profil sayfası (Bunu unutmuş olabiliriz)
+
+// Bileşenler
 import Navbar from './components/Navbar'
-import ProductDetail from './pages/ProductDetail'
+import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   return (
     <Router>
       <ToastContainer position="top-right" autoClose={3000} />
-      <Navbar /> {/* Navbar'ı buraya eklemeyi unutma, kodunda varsa kalsın */}
       
+      {/* Navbar her sayfada sabit durur */}
+      <Navbar /> 
+
       <Routes>
+        {/* 1. Ana Sayfa */}
         <Route path="/" element={
-            <ProtectedRoute><Home /></ProtectedRoute>
+            <ProtectedRoute>
+              <Home />
+            </ProtectedRoute>
         } />
 
-        {/* 2. YENİ ROTA: İlan Ekleme Sayfası */}
+        {/* 2. Ürün Ekleme */}
         <Route path="/add-product" element={
             <ProtectedRoute>
               <AddProduct />
             </ProtectedRoute>
         } />
-        <Route path="/product/:id" element={
-          <ProtectedRoute>
-          <ProductDetail />
-       </ProtectedRoute>
-} />
         
+        {/* 3. Ürün Detay */}
+        <Route path="/product/:id" element={
+            <ProtectedRoute>
+               <ProductDetail />
+            </ProtectedRoute>
+        } />
+
+        {/* 4. Profil Sayfası (Sorunlu olan kısım burasıydı) */}
+        <Route path="/profile" element={
+            <ProtectedRoute>
+               <Profile />
+            </ProtectedRoute>
+        } />
+        
+        {/* 5. Giriş Yap */}
         <Route path="/login" element={<Login />} />
       </Routes>
     </Router>
   )
 }
-// Not: Navbar importunu ve bileşenini yukarıdaki örnekte senin koduna göre ayarladık.
-// Eğer Navbar zaten App.jsx içinde değil de main.jsx içindeyse dokunma.
+
 export default App
