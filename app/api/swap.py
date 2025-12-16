@@ -1,7 +1,7 @@
 # app/api/swap.py
 
 from flask import request, jsonify, Blueprint
-from app.models import Product, SwapOffer, ListingType, OfferStatus
+from app.models import Product, SwapOffer,OfferStatus
 from app import db
 from flask_jwt_extended import jwt_required, get_jwt_identity
 

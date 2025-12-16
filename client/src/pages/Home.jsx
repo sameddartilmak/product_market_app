@@ -60,11 +60,15 @@ function Home() {
           <h3>⚠️ Ürün listesi boş veya yüklenemedi.</h3>
         </div>
       ) : (
-        // CSS Grid Sınıfı
         <div className="card-grid">
           {products.map((product) => (
-            // CSS Kart Sınıfı
-            <div key={product.id} className="product-card">
+            
+            <div 
+              key={product.id} 
+              className="product-card"
+              onClick={() => navigate(`/product/${product.id}`)}
+              style={{ cursor: 'pointer', position: 'relative' }} 
+            >
               
               <div className="card-image-container">
                 {product.image_url ? (
@@ -80,20 +84,17 @@ function Home() {
                   {product.description ? product.description.substring(0, 60) + '...' : '...'}
                 </p>
                 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                {/* BUTON KALDIRILDI, SADECE FİYAT KALDI */}
+                <div style={{ marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid #eee' }}>
                   <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#10b981' }}>
                     {product.price} TL
                   </span>
-                  <button 
-                    className="btn btn-primary"
-                    onClick={() => navigate(`/product/${product.id}`)}
-                  >
-                    Detay
-                  </button>
                 </div>
+
               </div>
 
             </div>
+
           ))}
         </div>
       )}

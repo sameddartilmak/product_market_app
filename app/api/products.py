@@ -182,7 +182,7 @@ def get_single_product(product_id):
     """Tek bir ürünün detaylarını getirir."""
     product = Product.query.get_or_404(product_id)
 
-    # Ürünün sahibini de bulalım ki detay sayfasında gösterelim
+    # Ürünün sahibini buluyoruz
     owner = User.query.get(product.owner_id)
 
     return jsonify({
@@ -194,6 +194,7 @@ def get_single_product(product_id):
         'image_url': product.image_url,
         'status': product.status,
         'created_at': product.created_at,
+        'listing_type': product.listing_type, 
         'owner': {
             'username': owner.username,
             'email': owner.email
