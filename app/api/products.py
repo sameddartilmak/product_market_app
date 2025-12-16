@@ -1,167 +1,154 @@
-# /app/api/products.py
-
-from flask import request, jsonify, Blueprint
-from app.models import Product, User
+# app/api/products.py
+import os
+import uuid
+from flask import Blueprint, request, jsonify, current_app
+from app.models import Product, ProductImage, User
 from app import db
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-# 'products' adında yeni bir Blueprint oluşturuyoruz
 products_bp = Blueprint('products', __name__)
 
-
-@products_bp.route('/', methods=['POST'])
-@jwt_required() # Bu satır, bu rotanın token gerektirdiğini belirtir!
-def create_product():
-    """Yeni bir ürün oluşturur."""
-    
-    # 1. Giriş yapan kullanıcının kimliğini (ID) al
-    current_user_id = int(get_jwt_identity())
-    
-    data = request.get_json()
-
-    # 2. Gerekli veriler geldi mi?
-    if not data or not data.get('title') or not data.get('category'):
-        return jsonify({'message': 'Eksik bilgi (title ve category zorunludur).'}), 400
-
-    # 3. Yeni ürünü oluştur ve sahibini (owner_id) giriş yapan kullanıcı olarak ata
-    new_product = Product(
-        title=data['title'],
-        description=data.get('description'),
-        category=data['category'],
-        image_url=data.get('image_url'),
-        price=data.get('price', 0.0), # Fiyatı da alalım
-        owner_id=current_user_id
-    )
-    
-    db.session.add(new_product)
-    db.session.commit()
-    
-    return jsonify({
-        'message': 'Ürün başarıyla eklendi.',
-        'product': {
-            'id': new_product.id,
-            'title': new_product.title,
-            'owner_id': new_product.owner_id
-        }
-    }), 201
-
-
+# 1. TÜM ÜRÜNLERİ GETİR (Vitrin - Herkese Açık)
 @products_bp.route('/', methods=['GET'])
-# @jwt_required()  <-- BU KİLİDİ KALDIRDIK (Vitrin herkese açık olsun)
 def get_products():
-    """Sisteme kayıtlı TÜM ürünleri listeler (Vitrin modu)."""
+    """Sisteme kayıtlı TÜM ürünleri listeler."""
+    all_products = Product.query.filter_by(status='available').all()
     
-    # Not: Artık get_jwt_identity() kullanmıyoruz çünkü giriş yapmayanlar da görebilmeli.
-
-    # 1. Veritabanındaki tüm ürünleri çek
-    all_products = Product.query.all()
-
-    # 2. Ürünleri JSON formatına dönüştür
     output = []
     for product in all_products:
-        product_data = {
+        output.append({
             'id': product.id,
             'title': product.title,
             'description': product.description,
             'category': product.category,
-            'price': product.price,       # Frontend'de fiyatı gösteriyoruz
-            'image_url': product.image_url, # Frontend'de resmi gösteriyoruz
+            'price': product.price,
+            'image_url': product.image_url, # Kapak resmi
             'status': product.status,
             'owner_id': product.owner_id,
+            'listing_type': product.listing_type,
             'created_at': product.created_at
-        }
-        output.append(product_data)
-
-    # Frontend direkt liste bekliyor (response.data), o yüzden listeyi direkt döndürüyoruz
+        })
     return jsonify(output), 200
 
-
-@products_bp.route('/<int:product_id>', methods=['PUT'])
+# 2. YENİ ÜRÜN EKLE (RESİMLİ - FormData)
+@products_bp.route('/', methods=['POST'])
 @jwt_required()
-def update_product(product_id):
-    """
-    Belirli bir ürünü günceller.
-    Sadece ürünün sahibi bu ürünü güncelleyebilir.
-    """
-    current_user_id = int(get_jwt_identity())
-    data = request.get_json()
+def create_product():
+    """Yeni ürün ve resimlerini ekler."""
+    
+    current_user_id = get_jwt_identity()
+    if isinstance(current_user_id, str):
+         current_user_id = int(current_user_id)
+    
+    # Form verilerini al
+    title = request.form.get('title')
+    description = request.form.get('description')
+    price = request.form.get('price')
+    category = request.form.get('category')
+    listing_type = request.form.get('listing_type', 'sale')
 
-    # 1. Ürünü bul
-    product = Product.query.get(product_id)
-    if not product:
-        return jsonify({'message': 'Ürün bulunamadı.'}), 404
+    if not title or not price:
+        return jsonify({'message': 'Başlık ve fiyat zorunludur.'}), 400
 
-    # 2. Güvenlik: Kullanıcı bu ürünün sahibi mi?
-    if product.owner_id != current_user_id:
-        return jsonify({'message': 'Sadece kendi ürünlerinizi güncelleyebilirsiniz.'}), 403
+    # 1. Veritabanına Kayıt
+    new_product = Product(
+        title=title,
+        description=description,
+        price=float(price),
+        category=category,
+        listing_type=listing_type,
+        owner_id=current_user_id,
+        status='available'
+    )
+    db.session.add(new_product)
+    db.session.commit()
 
-    # 3. Güncelle
-    if 'title' in data:
-        product.title = data['title']
-    if 'description' in data:
-        product.description = data['description']
-    if 'category' in data:
-        product.category = data['category']
-    if 'image_url' in data:
-        product.image_url = data['image_url']
-    if 'price' in data:
-        product.price = data['price']
+    # 2. Resim Kaydetme İşlemi (GARANTİ YÖNTEM)
+    files = request.files.getlist('images')
+    saved_urls = []
+
+    # Yolu manuel olarak kesinleştiriyoruz:
+    # Projenin çalıştığı klasör / app / static / uploads
+    basedir = os.path.abspath(os.path.dirname(__file__)) # Bu dosyanın olduğu yer (api klasörü)
+    # api klasöründen iki yukarı çık (app -> proje kökü) sonra app/static/uploads'a gir
+    # Daha basiti: os.getcwd() kullanmak
+    upload_folder = os.path.join(os.getcwd(), 'app', 'static', 'uploads')
+
+    # Klasör yoksa OLUŞTUR
+    if not os.path.exists(upload_folder):
+        print(f"UYARI: Klasör yoktu, oluşturuluyor: {upload_folder}")
+        os.makedirs(upload_folder)
+    
+    print(f"--> RESİMLER ŞURAYA KAYDEDİLECEK: {upload_folder}")
+
+    for file in files:
+        if file and file.filename:
+            ext = os.path.splitext(file.filename)[1]
+            unique_filename = f"{uuid.uuid4().hex}{ext}"
+            
+            # Tam dosya yolu
+            file_path = os.path.join(upload_folder, unique_filename)
+            
+            try:
+                file.save(file_path) # <--- ASIL KAYIT ANI
+                print(f"SUCCESS: Dosya kaydedildi -> {unique_filename}")
+                
+                # URL oluştur
+                full_url = f"http://127.0.0.1:5000/static/uploads/{unique_filename}"
+                saved_urls.append(full_url)
+                
+                # DB'ye ekle
+                img_entry = ProductImage(image_url=full_url, product_id=new_product.id)
+                db.session.add(img_entry)
+            except Exception as e:
+                print(f"HATA: Dosya kaydedilemedi! {str(e)}")
+
+    if saved_urls:
+        new_product.image_url = saved_urls[0]
     
     db.session.commit()
 
     return jsonify({
-        'message': 'Ürün başarıyla güncellendi.',
-        'product': {
-            'id': product.id,
-            'title': product.title
+        'message': 'Ürün ve resimler başarıyla eklendi.',
+        'product_id': new_product.id
+    }), 201
+
+# 3. TEK ÜRÜN DETAYI (RESİMLERLE BİRLİKTE)
+@products_bp.route('/<int:product_id>', methods=['GET'])
+def get_single_product(product_id):
+    """Tek bir ürünün detaylarını ve tüm resimlerini getirir."""
+    product = Product.query.get_or_404(product_id)
+    owner = User.query.get(product.owner_id)
+
+    # Ürüne ait tüm resim linklerini listeye çevir
+    images_list = [img.image_url for img in product.images]
+
+    return jsonify({
+        'id': product.id,
+        'title': product.title,
+        'description': product.description,
+        'category': product.category,
+        'price': product.price,
+        'image_url': product.image_url, # Kapak
+        'images': images_list,          # --- YENİ: Tüm Resimler ---
+        'status': product.status,
+        'created_at': product.created_at,
+        'listing_type': product.listing_type, 
+        'owner': {
+            'id': owner.id,
+            'username': owner.username,
+            'email': owner.email
         }
     }), 200
 
-
-@products_bp.route('/<int:product_id>', methods=['DELETE'])
-@jwt_required()
-def delete_product(product_id):
-    """
-    Belirli bir ürünü siler.
-    Sadece ürünün sahibi bu ürünü silebilir.
-    """
-    current_user_id = int(get_jwt_identity())
-
-    # 1. Ürünü bul
-    product = Product.query.get(product_id)
-    if not product:
-        return jsonify({'message': 'Ürün bulunamadı.'}), 404
-
-    # 2. Güvenlik: Kullanıcı bu ürünün sahibi mi?
-    if product.owner_id != current_user_id:
-        return jsonify({'message': 'Sadece kendi ürünlerinizi silebilirsiniz.'}), 403
-
-    # 3. İŞ MANTIĞI KONTROLÜ
-    if hasattr(product, 'listing') and product.listing and product.listing.is_active:
-        return jsonify({
-            'message': 'Bu ürün şu anda aktif bir ilanda. Silmek için önce ilanı kaldırın.'
-        }), 409
-
-    # 4. Güvenle Sil
-    try:
-        db.session.delete(product)
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            'message': 'Silme hatası.',
-            'error': str(e)
-        }), 500
-
-    return jsonify({'message': 'Ürün başarıyla silindi.'}), 200
-
+# 4. KULLANICININ KENDİ ÜRÜNLERİ
 @products_bp.route('/my-products', methods=['GET'])
 @jwt_required()
 def get_my_products():
-    """Giriş yapmış kullanıcının kendi ürünlerini listeler."""
-    current_user_id = int(get_jwt_identity())
+    current_user_id = get_jwt_identity()
+    if isinstance(current_user_id, str):
+         current_user_id = int(current_user_id)
     
-    # Sadece benim ürünlerimi getir
     my_products = Product.query.filter_by(owner_id=current_user_id).all()
     
     output = []
@@ -172,32 +159,56 @@ def get_my_products():
             'price': product.price,
             'image_url': product.image_url,
             'status': product.status,
-            'category': product.category
+            'category': product.category,
+            'listing_type': product.listing_type
         })
     
     return jsonify(output), 200
 
-@products_bp.route('/<int:product_id>', methods=['GET'])
-def get_single_product(product_id):
-    """Tek bir ürünün detaylarını getirir."""
+# 5. ÜRÜN GÜNCELLEME
+@products_bp.route('/<int:product_id>', methods=['PUT'])
+@jwt_required()
+def update_product(product_id):
+    current_user_id = get_jwt_identity()
+    if isinstance(current_user_id, str):
+         current_user_id = int(current_user_id)
+
     product = Product.query.get_or_404(product_id)
 
-    # Ürünün sahibini buluyoruz
-    owner = User.query.get(product.owner_id)
+    if product.owner_id != current_user_id:
+        return jsonify({'message': 'Yetkisiz işlem.'}), 403
 
-    return jsonify({
-        'id': product.id,
-        'title': product.title,
-        'description': product.description,
-        'category': product.category,
-        'price': product.price,
-        'image_url': product.image_url,
-        'status': product.status,
-        'created_at': product.created_at,
-        'listing_type': product.listing_type, 
-        'owner': {
-            'id': owner.id,          # <--- BU SATIRI MUTLAKA EKLE
-            'username': owner.username,
-            'email': owner.email
-        }
-    }), 200
+    # Not: Güncelleme şu anlık sadece metin (JSON) destekliyor.
+    # Resim güncellemek için ayrı bir mantık gerekir.
+    data = request.get_json()
+    
+    if data:
+        if 'title' in data: product.title = data['title']
+        if 'description' in data: product.description = data['description']
+        if 'price' in data: product.price = data['price']
+        if 'category' in data: product.category = data['category']
+        
+        db.session.commit()
+        return jsonify({'message': 'Ürün güncellendi.'}), 200
+    else:
+        return jsonify({'message': 'Veri gönderilmedi.'}), 400
+
+# 6. ÜRÜN SİLME
+@products_bp.route('/<int:product_id>', methods=['DELETE'])
+@jwt_required()
+def delete_product(product_id):
+    current_user_id = get_jwt_identity()
+    if isinstance(current_user_id, str):
+         current_user_id = int(current_user_id)
+
+    product = Product.query.get_or_404(product_id)
+
+    if product.owner_id != current_user_id:
+        return jsonify({'message': 'Yetkisiz işlem.'}), 403
+
+    try:
+        db.session.delete(product)
+        db.session.commit()
+        return jsonify({'message': 'Ürün silindi.'}), 200
+    except Exception as e:
+        return jsonify({'message': 'Silme hatası.', 'error': str(e)}), 500

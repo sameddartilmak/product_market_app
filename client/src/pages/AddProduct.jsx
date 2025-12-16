@@ -7,47 +7,71 @@ import { useNavigate } from 'react-router-dom'
 function AddProduct() {
   const navigate = useNavigate()
   
-  // Form verilerini tutan state
+  // Metin verileri için State
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    price: '',
-    category: 'elektronik',
-    listing_type: 'sale', // Varsayılan: Satılık
-    image_url: ''
+    title: '', 
+    description: '', 
+    price: '', 
+    category: 'elektronik', 
+    listing_type: 'sale' // Varsayılan: Satılık
   })
+  
+  // Dosyalar için ayrı State (Array)
+  const [selectedFiles, setSelectedFiles] = useState([])
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
+    setFormData({ 
+      ...formData, 
+      [e.target.name]: e.target.value 
     })
+  }
+
+  // Dosya seçimi değişince çalışır
+  const handleFileChange = (e) => {
+    // FileList nesnesini alıyoruz
+    setSelectedFiles(e.target.files)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!formData.title || !formData.price) {
-      toast.warning('Lütfen başlık ve fiyat alanlarını doldurun.')
-      return
+    // --- ÖNEMLİ: JSON yerine FormData oluşturuyoruz ---
+    const data = new FormData()
+    data.append('title', formData.title)
+    data.append('description', formData.description)
+    data.append('price', formData.price)
+    data.append('category', formData.category)
+    data.append('listing_type', formData.listing_type)
+
+    // Seçilen dosyaları döngüyle ekle
+    // Backend 'images' adında bir liste bekliyor (request.files.getlist('images'))
+    for (let i = 0; i < selectedFiles.length; i++) {
+        data.append('images', selectedFiles[i])
     }
 
     try {
       const token = localStorage.getItem('token')
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      }
-
-      await axios.post('http://127.0.0.1:5000/api/products/', formData, config)
       
-      toast.success('İlan başarıyla oluşturuldu!')
+      // DÜZELTME: Content-Type satırını kaldırdık!
+      // Axios, "data" değişkeninin FormData olduğunu görünce 
+      // otomatik olarak doğru başlığı ve 'boundary' değerini ekler.
+      await axios.post('http://127.0.0.1:5000/api/products/', data, {
+        headers: { 
+            Authorization: `Bearer ${token}`
+            // 'Content-Type': 'multipart/form-data' <-- BU SATIR SİLİNDİ
+        }
+      })
       
+      toast.success('İlan ve resimler başarıyla yüklendi! 🚀')
+      
+      // Başarılı olursa ana sayfaya yönlendir
       setTimeout(() => {
         navigate('/')
       }, 1500)
 
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Bir hata oluştu')
+      console.error(error)
+      toast.error(error.response?.data?.message || 'Yükleme sırasında hata oluştu.')
     }
   }
 
@@ -68,7 +92,7 @@ function AddProduct() {
           />
         </div>
 
-        {/* Fiyat ve Hesaplama Alanı */}
+        {/* Fiyat ve Hesaplama */}
         <div>
           <label style={styles.label}>Fiyat (TL):</label>
           <input 
@@ -77,9 +101,8 @@ function AddProduct() {
             style={styles.input} required 
             placeholder="0.00"
           />
-          
-          {/* --- KOMİSYON HESAPLAMA ALANI --- */}
-          {formData.price && (
+           {/* Komisyon Göstergesi */}
+           {formData.price && (
             <div style={styles.calculationBox}>
                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '5px'}}>
                     <span>🔹 Hizmet Bedeli (%3):</span>
@@ -91,10 +114,25 @@ function AddProduct() {
                 </div>
             </div>
           )}
-          {/* -------------------------------- */}
         </div>
 
-        {/* İlan Türü (Satılık / Kiralık) */}
+        {/* --- YENİ: RESİM YÜKLEME ALANI --- */}
+        <div style={{backgroundColor:'#f8f9fa', padding:'15px', borderRadius:'6px', border:'1px dashed #ccc'}}>
+            <label style={styles.label}>Ürün Fotoğrafları:</label>
+            <input 
+                type="file" 
+                multiple  // <-- Birden fazla dosya seçmeye izin verir
+                onChange={handleFileChange}
+                accept="image/*" // Sadece resim dosyaları
+                style={{marginTop:'5px', width:'100%'}}
+            />
+            <small style={{color:'#666', display:'block', marginTop:'5px'}}>
+                💡 İpucu: Birden fazla fotoğraf seçmek için <strong>CTRL</strong> (Mac'te CMD) tuşuna basılı tutarak seçim yapın.
+            </small>
+        </div>
+        {/* -------------------------------- */}
+
+        {/* İlan Türü */}
         <div>
           <label style={styles.label}>İlan Türü:</label>
           <select name="listing_type" value={formData.listing_type} onChange={handleChange} style={styles.input}>
@@ -116,17 +154,6 @@ function AddProduct() {
           </select>
         </div>
 
-        {/* Resim URL */}
-        <div>
-          <label style={styles.label}>Resim Linki (URL):</label>
-          <input 
-            type="text" name="image_url" 
-            placeholder="https://ornek.com/resim.jpg"
-            value={formData.image_url} onChange={handleChange} 
-            style={styles.input} 
-          />
-        </div>
-
         {/* Açıklama */}
         <div>
           <label style={styles.label}>Açıklama:</label>
@@ -135,7 +162,7 @@ function AddProduct() {
             value={formData.description} onChange={handleChange} 
             rows="4"
             style={styles.input} 
-            placeholder="Ürünün özelliklerinden bahsedin..."
+            placeholder="Ürünün durumundan ve özelliklerinden bahsedin..."
           ></textarea>
         </div>
 
@@ -146,41 +173,10 @@ function AddProduct() {
 }
 
 const styles = {
-  label: {
-    display: 'block',
-    marginBottom: '5px',
-    fontWeight: 'bold',
-    color: '#555'
-  },
-  input: {
-    width: '100%',
-    padding: '10px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
-    fontSize: '16px',
-    boxSizing: 'border-box' // Padding taşmasını önler
-  },
-  calculationBox: {
-    marginTop: '8px',
-    backgroundColor: '#f8f9fa',
-    padding: '10px',
-    borderRadius: '6px',
-    border: '1px solid #e9ecef',
-    fontSize: '0.9rem',
-    color: '#495057'
-  },
-  button: {
-    backgroundColor: '#2ecc71',
-    color: 'white',
-    padding: '12px',
-    border: 'none',
-    borderRadius: '4px',
-    fontSize: '18px',
-    cursor: 'pointer',
-    marginTop: '10px',
-    fontWeight: 'bold',
-    transition: 'background 0.3s'
-  }
+  label: { display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#555' },
+  input: { width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '16px', boxSizing: 'border-box' },
+  calculationBox: { marginTop: '8px', backgroundColor: '#f8f9fa', padding: '10px', borderRadius: '6px', border: '1px solid #e9ecef', fontSize: '0.9rem', color: '#495057' },
+  button: { backgroundColor: '#2ecc71', color: 'white', padding: '12px', border: 'none', borderRadius: '4px', fontSize: '18px', cursor: 'pointer', marginTop: '10px', fontWeight: 'bold', transition: 'background 0.3s' }
 }
 
 export default AddProduct

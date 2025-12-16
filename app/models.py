@@ -44,15 +44,12 @@ class Product(db.Model):
     description = db.Column(db.Text, nullable=True)
     category = db.Column(db.String(50), nullable=False)
     price = db.Column(db.Float, default=0.0)
-    
-    # Kiralık mı Satılık mı?
     listing_type = db.Column(db.String(20), default=ListingType.SALE.value)
-    
     status = db.Column(db.String(20), default='available') 
     image_url = db.Column(db.String(500), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow) 
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    images = db.relationship('ProductImage', backref='product', lazy=True, cascade="all, delete-orphan")
 
 class SwapOffer(db.Model):
     __tablename__ = 'swap_offers'
@@ -76,7 +73,15 @@ class SwapOffer(db.Model):
     buyer = db.relationship('User', foreign_keys=[buyer_id])
     target_product = db.relationship('Product', foreign_keys=[target_product_id])
     offering_product = db.relationship('Product', foreign_keys=[offering_product_id])
-    
+
+class ProductImage(db.Model):
+    __tablename__ = 'product_images'
+
+    id = db.Column(db.Integer, primary_key=True)
+    image_url = db.Column(db.String(255), nullable=False) # Resmin yolu
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+
+        
 class Transaction(db.Model):
     __tablename__ = 'transactions'
 
@@ -115,3 +120,5 @@ class Message(db.Model):
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
     receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_messages')
     product = db.relationship('Product', backref='messages')
+
+

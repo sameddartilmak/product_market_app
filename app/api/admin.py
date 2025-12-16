@@ -1,6 +1,7 @@
 # app/api/admin.py
-from flask import Blueprint, jsonify, request
-from app.models import User, Product, Transaction
+import os
+from flask import Blueprint, jsonify, request, current_app
+from app.models import User, Product, Transaction, ProductImage
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from sqlalchemy import func
@@ -75,16 +76,45 @@ def delete_user(user_id):
     db.session.commit()
     return jsonify({'message': 'Kullanıcı silindi.'}), 200
 
-# 4. ÜRÜN SİL
+# 4. ÜRÜN SİL (GÜNCELLENDİ: Dosya Temizliği Eklendi)
 @admin_bp.route('/delete-product/<int:product_id>', methods=['DELETE'])
 @jwt_required()
 def delete_product(product_id):
     if not check_admin(): return jsonify({'message': 'Yetkisiz!'}), 403
     
     product = Product.query.get_or_404(product_id)
-    db.session.delete(product)
-    db.session.commit()
-    return jsonify({'message': 'Ürün silindi.'}), 200
+    
+    try:
+        # --- ADIM 1: Fiziksel Dosyaları Sil ---
+        # Ürüne bağlı tüm resimler üzerinde dönüyoruz
+        if product.images:
+            for img in product.images:
+                try:
+                    # URL'den dosya adını ayıkla
+                    # Örn: http://localhost:5000/static/uploads/resim.jpg -> resim.jpg
+                    filename = img.image_url.split('/')[-1]
+                    
+                    # Dosyanın tam yolunu bul
+                    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                    
+                    # Dosya varsa sil
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        print(f"Admin sildi: {filename}")
+                except Exception as e:
+                    print(f"Dosya silme hatası: {e}")
+
+        # --- ADIM 2: Veritabanından Sil ---
+        # (Eğer models.py içinde cascade="all, delete-orphan" varsa
+        # product_images tablosundaki satırlar otomatik silinir)
+        db.session.delete(product)
+        db.session.commit()
+        
+        return jsonify({'message': 'Ürün ve resim dosyaları silindi.'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Silme işlemi başarısız.', 'error': str(e)}), 500
 
 # 5. İŞLEM SİL
 @admin_bp.route('/delete-transaction/<int:transaction_id>', methods=['DELETE'])

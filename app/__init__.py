@@ -5,6 +5,7 @@ from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from .config import Config
+import os
 
 # Eklentileri başlatıyoruz
 db = SQLAlchemy()
@@ -18,6 +19,14 @@ def create_app(config_class=Config):
     
     # Uygulama Konfigürasyonu
     app.config.from_object(config_class)
+    
+    UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
+    
+    # Klasör yoksa oluştur (Hata almamak için)
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+        
+    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
     # CORS Ayarları (Tüm originlere izin verir)
     CORS(app, resources={r"/*": {"origins": "*"}})
