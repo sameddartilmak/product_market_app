@@ -2,7 +2,8 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
-import { useNavigate } from 'react-router-dom'
+// Düzeltme: Tek satırda hem useNavigate hem Link import edildi
+import { useNavigate, Link } from 'react-router-dom'
 
 function Login() {
   const [username, setUsername] = useState('')
@@ -18,29 +19,23 @@ function Login() {
         password: password
       })
       
-      const user = response.data.user // Kullanıcı bilgilerini değişkene alalım
+      const user = response.data.user
       
       toast.success(`Hoş geldin ${user.username}!`)
       
-      // Verileri Kaydet
       localStorage.setItem('token', response.data.token)
       localStorage.setItem('username', user.username)
       localStorage.setItem('role', user.role)
       localStorage.setItem('user_id', user.id)
 
-      // --- AKILLI YÖNLENDİRME BURADA ---
       setTimeout(() => {
-        
         if (user.role === 'admin') {
-            navigate('/admin') // Admin ise Panele git
+            navigate('/admin')
         } else {
-            navigate('/') // Müşteri ise Anasayfaya git
+            navigate('/')
         }
-
-        // Navbar'ın güncellenmesi için sayfayı yenile
         window.location.reload() 
       }, 1500)
-      // --------------------------------
 
     } catch (error) {
       if (error.response) {
@@ -69,6 +64,10 @@ function Login() {
           Giriş Yap
         </button>
       </form>
+      <p style={{marginTop: '20px'}}>
+        Hesabın yok mu? <Link to="/register" style={{color: '#4CAF50', fontWeight: 'bold', textDecoration: 'none'}}>Hemen Kayıt Ol</Link>
+      </p>
+
     </div>
   )
 }

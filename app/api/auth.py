@@ -9,39 +9,39 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 auth_bp = Blueprint('auth', __name__)
 
 
+# app/api/auth.py dosyasının en altına ekle:
+
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    """Kullanıcı Kayıt Endpoint'i"""
+    """
+    Yeni kullanıcı kaydı oluşturur.
+    """
     data = request.get_json()
-    
-    # 1. Gelen veriyi kontrol et
-    if not data or not data.get('username') or not data.get('email') or not data.get('password'):
-        return jsonify({'message': 'Eksik bilgi (username, email, password zorunludur).'}), 400
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
 
-    username = data['username']
-    email = data['email']
-    password = data['password']
+    # 1. Boş alan kontrolü
+    if not username or not email or not password:
+        return jsonify({'message': 'Tüm alanları doldurunuz.'}), 400
 
-    # 2. Kullanıcı adı veya email zaten var mı diye kontrol et
-    if User.query.filter_by(username=username).first():
-        return jsonify({'message': 'Bu kullanıcı adı zaten alınmış.'}), 409 # 409 Conflict
-    
-    if User.query.filter_by(email=email).first():
-        return jsonify({'message': 'Bu e-posta adresi zaten kullanımda.'}), 409
+    # 2. Kullanıcı adı veya Email zaten var mı?
+    if User.query.filter((User.username == username) | (User.email == email)).first():
+        return jsonify({'message': 'Bu kullanıcı adı veya email zaten kullanılıyor.'}), 400
 
-    # 3. Yeni kullanıcıyı oluştur
-    new_user = User(
-        username=username,
-        email=email
-    )
-    # Şifreyi modeldeki set_password metoduyla hash'leyerek ata
-    new_user.set_password(password)
+    # 3. Yeni kullanıcı oluştur
+    new_user = User(username=username, email=email)
+    new_user.set_password(password) # Şifreyi hashleyerek kaydeder
     
-    # 4. Veritabanına kaydet
-    db.session.add(new_user)
-    db.session.commit()
-    
-    return jsonify({'message': 'Kullanıcı başarıyla oluşturuldu.'}), 201 # 201 Created
+    # Varsayılan rol 'customer' olarak ayarlanır (Modelde tanımlı)
+
+    try:
+        db.session.add(new_user)
+        db.session.commit()
+        return jsonify({'message': 'Kayıt başarılı! Giriş yapabilirsiniz.'}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Kayıt sırasında hata oluştu.', 'error': str(e)}), 500
 
 
 @auth_bp.route('/login', methods=['POST'])
