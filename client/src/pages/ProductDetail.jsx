@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import MessageModal from '../components/MessageModal'
 
 function ProductDetail() {
   const { id } = useParams()
@@ -10,6 +11,9 @@ function ProductDetail() {
   
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
+  
+  // Mesaj Modalı State'i
+  const [isMsgModalOpen, setIsMsgModalOpen] = useState(false)
 
   // Kiralama için Tarih State'leri
   const [startDate, setStartDate] = useState('')
@@ -33,8 +37,7 @@ function ProductDetail() {
 
   // --- SATIN ALMA / KİRALAMA FONKSİYONU ---
   const handleTransaction = async () => {
-    // 1. Giriş Kontrolü
-    const token = localStorage.getItem('token') // Veya senin token sakladığın yer
+    const token = localStorage.getItem('token')
     if (!token) {
         toast.warning("İşlem yapmak için giriş yapmalısınız!")
         navigate('/login')
@@ -45,7 +48,6 @@ function ProductDetail() {
         let endpoint = ''
         let payload = { product_id: product.id }
 
-        // 2. İşlem Tipine Göre Hazırlık
         if (product.listing_type === 'sale') {
             endpoint = 'http://127.0.0.1:5000/api/transactions/buy'
         } 
@@ -63,20 +65,15 @@ function ProductDetail() {
             return
         }
 
-        // 3. İsteği Gönder
         const response = await axios.post(endpoint, payload, {
             headers: { Authorization: `Bearer ${token}` }
         })
 
-        // 4. Başarılı Sonuç
         toast.success(response.data.message)
-        
-        // Sayfayı yenilemeye gerek yok, anasayfaya veya profilim sayfasına yönlendirelim
         navigate('/') 
 
     } catch (error) {
         console.error("İşlem Hatası:", error)
-        // Backend'den gelen hata mesajını göster
         const errorMsg = error.response?.data?.message || "İşlem başarısız oldu."
         toast.error(errorMsg)
     }
@@ -85,7 +82,6 @@ function ProductDetail() {
   if (loading) return <div style={{textAlign:'center', marginTop:'50px'}}>Yükleniyor...</div>
   if (!product) return null
 
-  // Buton Rengi ve Metni Belirleme
   const getActionDetails = () => {
     if (product.listing_type === 'sale') return { text: `Satın Al (${product.price} TL)`, color: '#2ecc71' }
     if (product.listing_type === 'rent') return { text: `Kirala (Günlük ${product.price} TL)`, color: '#3498db' }
@@ -100,7 +96,6 @@ function ProductDetail() {
       <button onClick={() => navigate(-1)} style={styles.backButton}>&larr; Geri Dön</button>
 
       <div style={styles.card}>
-        {/* Sol: Resim */}
         <div style={styles.imageSection}>
           {product.image_url ? (
             <img src={product.image_url} alt={product.title} style={styles.image} />
@@ -109,7 +104,6 @@ function ProductDetail() {
           )}
         </div>
 
-        {/* Sağ: Bilgiler */}
         <div style={styles.infoSection}>
           <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
             <span style={styles.category}>{product.category}</span>
@@ -131,7 +125,6 @@ function ProductDetail() {
              <p><strong>Durum:</strong> {product.status === 'available' ? '🟢 Müsait' : '🔴 İşlemde/Satıldı'}</p>
           </div>
 
-          {/* --- KİRALAMA TARİH SEÇİMİ (Sadece Kiralıksa Görünür) --- */}
           {product.listing_type === 'rent' && product.status === 'available' && (
               <div style={styles.dateContainer}>
                   <label>Başlangıç: <input type="date" style={styles.input} value={startDate} onChange={e => setStartDate(e.target.value)} /></label>
@@ -151,8 +144,25 @@ function ProductDetail() {
                 <button style={styles.disabledButton} disabled>Bu Ürün Müsait Değil</button>
             )}
             
-            <button style={styles.messageButton}>Mesaj At</button>
+            {/* --- GÜNCELLENEN MESAJ BUTONU --- */}
+            <button 
+                onClick={() => setIsMsgModalOpen(true)} 
+                style={styles.messageButton}
+            >
+                Mesaj At
+            </button>
           </div>
+
+          {/* --- MESAJ PENCERESİ (MODAL) --- */}
+          {product && (
+            <MessageModal 
+                isOpen={isMsgModalOpen} 
+                onClose={() => setIsMsgModalOpen(false)}
+                receiverId={product.owner?.id} 
+                productId={product.id}
+                productTitle={product.title}
+            />
+          )}
 
         </div>
       </div>
@@ -175,7 +185,6 @@ const styles = {
   description: { lineHeight: '1.6', color: '#555', marginBottom: '30px' },
   ownerInfo: { backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '8px', marginBottom: '20px', fontSize: '0.9rem' },
   
-  // Yeni Stiller
   dateContainer: { display: 'flex', gap: '15px', marginBottom: '20px', backgroundColor: '#f0f9ff', padding: '10px', borderRadius: '8px' },
   input: { marginLeft: '5px', padding: '5px', borderRadius: '4px', border: '1px solid #ccc' },
   

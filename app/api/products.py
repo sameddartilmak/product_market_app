@@ -196,6 +196,7 @@ def get_single_product(product_id):
         'created_at': product.created_at,
         'listing_type': product.listing_type, 
         'owner': {
+            'id': owner.id,          # <--- BU SATIRI MUTLAKA EKLE
             'username': owner.username,
             'email': owner.email
         }

@@ -11,6 +11,7 @@ import ProductDetail from './pages/ProductDetail' // Detay sayfası
 import Profile from './pages/Profile'             // <-- Profil sayfası (Bunu unutmuş olabiliriz)
 import AdminPanel from './pages/AdminPanel'
 import Register from './pages/Register'
+import Messages from './pages/Messages'
 
 // Bileşenler
 import Navbar from './components/Navbar'
@@ -34,6 +35,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/messages" element={<Messages />} />
         </Routes>
       </div>
     </Router>

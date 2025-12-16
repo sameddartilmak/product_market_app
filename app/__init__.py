@@ -52,6 +52,9 @@ def create_app(config_class=Config):
     
     from .api.admin import admin_bp
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    
+    from .api.messages import messages_bp
+    app.register_blueprint(messages_bp, url_prefix='/api/messages')
 
     @app.route('/')
     def hello():

@@ -44,6 +44,7 @@ function Navbar() {
                 <>
                   <Link to="/" style={styles.link}>Vitrin</Link>
                   <Link to="/profile" style={styles.link}>Profilim</Link>
+                  <Link to="/messages" style={styles.link}>💬 Mesajlarım</Link>
                   <Link to="/add-product" style={styles.addButton}>+ İlan Ver</Link>
                   <div style={styles.userBadge}>
                     <span style={{fontWeight: 'bold'}}>{username}</span>
