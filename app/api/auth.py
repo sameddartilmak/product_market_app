@@ -46,30 +46,27 @@ def register():
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    """Kullanıcı Giriş Endpoint'i"""
     data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
 
-    # 1. Gelen veriyi kontrol et
-    if not data or not data.get('username') or not data.get('password'):
-        return jsonify({'message': 'Eksik bilgi (username, password zorunludur).'}), 400
-    
-
-    username = data['username']
-    password = data['password']
-
-    # 2. Kullanıcıyı bul
+    # Kullanıcıyı bul
     user = User.query.filter_by(username=username).first()
 
-    # 3. Kullanıcı var mı ve şifre doğru mu kontrol et
-    #    (models.py'de yazdığımız check_password metodunu kullanıyoruz)
-    if not user or not user.check_password(password):
-        return jsonify({'message': 'Geçersiz kullanıcı adı veya şifre.'}), 401 # 401 Unauthorized
+    # Şifre kontrolü
+    if user and user.check_password(password):
+        # Token oluştur (user.id'yi string'e çevirmek daha garantidir)
+        access_token = create_access_token(identity=str(user.id))
 
-    # 4. Şifre doğruysa, bir JWT (JSON Web Token) oluştur
-    #    Bu token, kullanıcının kimliğini kanıtlar
-    access_token = create_access_token(identity=str(user.id))
+        # Frontend'e hem Token hem de Kullanıcı Bilgilerini dönüyoruz
+        return jsonify({
+            'token': access_token,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'role': user.role,
+                'email': user.email
+            }
+        }), 200
     
-    return jsonify({
-        'message': f'Hoş geldin, {user.username}!',
-        'access_token': access_token
-    }), 200
+    return jsonify({'message': 'Geçersiz kullanıcı adı veya şifre'}), 401

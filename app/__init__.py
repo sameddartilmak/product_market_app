@@ -46,6 +46,12 @@ def create_app(config_class=Config):
     # 4. Genel API Routes (Varsa)
     from .api.routes import api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
+    
+    from .api.transactions import transactions_bp
+    app.register_blueprint(transactions_bp, url_prefix='/api/transactions')
+    
+    from .api.admin import admin_bp
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
     @app.route('/')
     def hello():

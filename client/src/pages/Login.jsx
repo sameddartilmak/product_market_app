@@ -2,35 +2,45 @@
 import { useState } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
-import { useNavigate } from 'react-router-dom' // <-- 1. YENİ: Yönlendirme aracı
+import { useNavigate } from 'react-router-dom'
 
 function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   
-  const navigate = useNavigate() // <-- 2. YENİ: Aracı başlattık
+  const navigate = useNavigate()
 
   const handleLogin = async (e) => {
     e.preventDefault()
     try {
-      // Backend'e istek at
       const response = await axios.post('http://127.0.0.1:5000/api/auth/login', {
         username: username,
         password: password
       })
       
-      // Başarılı olursa
-      toast.success(`Hoş geldin ${username}!`) // İsimle karşılama
+      const user = response.data.user // Kullanıcı bilgilerini değişkene alalım
       
-      // Token'ı kaydet
-      localStorage.setItem('token', response.data.access_token) 
+      toast.success(`Hoş geldin ${user.username}!`)
+      
+      // Verileri Kaydet
+      localStorage.setItem('token', response.data.token)
+      localStorage.setItem('username', user.username)
+      localStorage.setItem('role', user.role)
+      localStorage.setItem('user_id', user.id)
 
-      // <-- 3. YENİ: 1.5 saniye sonra Ana Sayfaya gönder
+      // --- AKILLI YÖNLENDİRME BURADA ---
       setTimeout(() => {
-        navigate('/') 
-        // Sayfayı yenile ki Navbar güncellensin (Profilim butonu gelsin)
+        
+        if (user.role === 'admin') {
+            navigate('/admin') // Admin ise Panele git
+        } else {
+            navigate('/') // Müşteri ise Anasayfaya git
+        }
+
+        // Navbar'ın güncellenmesi için sayfayı yenile
         window.location.reload() 
       }, 1500)
+      // --------------------------------
 
     } catch (error) {
       if (error.response) {

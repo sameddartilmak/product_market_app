@@ -3,8 +3,7 @@ from datetime import datetime
 import enum
 from app import db, bcrypt
 
-# --- 1. EKSİK ENUM SINIFLARI EKLENDİ ---
-# Bu sınıflar olmadan swap.py import hatası verir
+# --- ENUM SINIFLARI ---
 class ListingType(str, enum.Enum):
     SALE = 'sale'
     RENT = 'rent'
@@ -16,7 +15,7 @@ class OfferStatus(str, enum.Enum):
     REJECTED = 'rejected'
     COMPLETED = 'completed'
 
-# --- 2. MODELLER ---
+# --- MODELLER ---
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -46,8 +45,7 @@ class Product(db.Model):
     category = db.Column(db.String(50), nullable=False)
     price = db.Column(db.Float, default=0.0)
     
-    # Burada ListingType Enum'ını string olarak saklayabiliriz veya EnumType kullanabiliriz.
-    # Şimdilik string olarak bırakıyorum ama Enum değerlerini kullanmanızı öneririm.
+    # Kiralık mı Satılık mı?
     listing_type = db.Column(db.String(20), default=ListingType.SALE.value)
     
     status = db.Column(db.String(20), default='available') 
@@ -84,19 +82,22 @@ class Transaction(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     
-    # DÜZELTME: ForeignKey 'products.id' olmalı ('product.id' değil, çünkü tablo adı 'products')
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     product = db.relationship('Product', backref='transactions')
 
-    # DÜZELTME: ForeignKey 'users.id' olmalı
     buyer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     buyer = db.relationship('User', foreign_keys=[buyer_id], backref='purchases')
 
-    # DÜZELTME: ForeignKey 'users.id' olmalı
     seller_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     seller = db.relationship('User', foreign_keys=[seller_id], backref='sales')
 
     transaction_type = db.Column(db.String(20), nullable=False) # 'SALE', 'RENT'
     price = db.Column(db.Numeric(10, 2), nullable=False)
     status = db.Column(db.String(20), default='COMPLETED')
+    
+    # --- YENİ EKLENEN KISIM (Kiralama İçin) ---
+    start_date = db.Column(db.Date, nullable=True) # Sadece kiralama ise dolu olur
+    end_date = db.Column(db.Date, nullable=True)   # Sadece kiralama ise dolu olur
+    # ------------------------------------------
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

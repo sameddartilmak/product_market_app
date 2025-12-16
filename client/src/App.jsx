@@ -9,6 +9,7 @@ import Home from './pages/Home'
 import AddProduct from './pages/AddProduct'
 import ProductDetail from './pages/ProductDetail' // Detay sayfası
 import Profile from './pages/Profile'             // <-- Profil sayfası (Bunu unutmuş olabiliriz)
+import AdminPanel from './pages/AdminPanel'
 
 // Bileşenler
 import Navbar from './components/Navbar'
@@ -30,6 +31,7 @@ function App() {
           <Route path="/product/:id" element={<ProtectedRoute><ProductDetail /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/login" element={<Login />} />
+          <Route path="/admin" element={<AdminPanel />} />
         </Routes>
       </div>
     </Router>
