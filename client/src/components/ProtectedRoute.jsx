@@ -15,5 +15,4 @@ function ProtectedRoute({ children }) {
   // 3. Token VARSA, buyur geç (Sayfayı göster)
   return children
 }
-
 export default ProtectedRoute

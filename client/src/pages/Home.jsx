@@ -69,7 +69,6 @@ function Home() {
               onClick={() => navigate(`/product/${product.id}`)}
               style={{ cursor: 'pointer', position: 'relative' }} 
             >
-              
               <div className="card-image-container">
                 {product.image_url ? (
                   <img src={product.image_url} alt={product.title} className="card-image" />
@@ -102,7 +101,6 @@ function Home() {
   )
 }
 
-// Stiller
 const styles = {
   grid: {
     display: 'grid',

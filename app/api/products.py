@@ -34,7 +34,7 @@ def get_products():
 @products_bp.route('/', methods=['POST'])
 @jwt_required()
 def create_product():
-    """Yeni ürün ve resimlerini ekler."""
+    """Yeni ürün ve resimlerini ID bazlı klasöre ekler."""
     
     current_user_id = get_jwt_identity()
     if isinstance(current_user_id, str):
@@ -50,7 +50,7 @@ def create_product():
     if not title or not price:
         return jsonify({'message': 'Başlık ve fiyat zorunludur.'}), 400
 
-    # 1. Veritabanına Kayıt
+    # 1. Önce Ürünü Veritabanına Kaydet (ID'si oluşsun diye)
     new_product = Product(
         title=title,
         description=description,
@@ -61,40 +61,37 @@ def create_product():
         status='available'
     )
     db.session.add(new_product)
-    db.session.commit()
+    db.session.commit() # new_product.id artık elimizde!
 
-    # 2. Resim Kaydetme İşlemi (GARANTİ YÖNTEM)
+    # 2. Resim Kaydetme İşlemi (GÜNCELLENDİ: ID Bazlı Klasörleme)
     files = request.files.getlist('images')
     saved_urls = []
 
-    # Yolu manuel olarak kesinleştiriyoruz:
-    # Projenin çalıştığı klasör / app / static / uploads
-    basedir = os.path.abspath(os.path.dirname(__file__)) # Bu dosyanın olduğu yer (api klasörü)
-    # api klasöründen iki yukarı çık (app -> proje kökü) sonra app/static/uploads'a gir
-    # Daha basiti: os.getcwd() kullanmak
-    upload_folder = os.path.join(os.getcwd(), 'app', 'static', 'uploads')
+    # Ana upload klasörü: .../app/static/uploads
+    base_upload_folder = os.path.join(os.getcwd(), 'app', 'static', 'uploads')
+    
+    # Ürüne özel klasör: .../app/static/uploads/15 (Örn: ID=15 ise)
+    product_folder = os.path.join(base_upload_folder, str(new_product.id))
 
     # Klasör yoksa OLUŞTUR
-    if not os.path.exists(upload_folder):
-        print(f"UYARI: Klasör yoktu, oluşturuluyor: {upload_folder}")
-        os.makedirs(upload_folder)
-    
-    print(f"--> RESİMLER ŞURAYA KAYDEDİLECEK: {upload_folder}")
+    if not os.path.exists(product_folder):
+        os.makedirs(product_folder)
+        print(f"--> YENİ KLASÖR OLUŞTURULDU: {product_folder}")
 
     for file in files:
         if file and file.filename:
             ext = os.path.splitext(file.filename)[1]
             unique_filename = f"{uuid.uuid4().hex}{ext}"
             
-            # Tam dosya yolu
-            file_path = os.path.join(upload_folder, unique_filename)
+            # Dosyayı ürünün KENDİ klasörüne kaydet
+            file_path = os.path.join(product_folder, unique_filename)
             
             try:
-                file.save(file_path) # <--- ASIL KAYIT ANI
-                print(f"SUCCESS: Dosya kaydedildi -> {unique_filename}")
+                file.save(file_path) # <--- Kayıt yeri değişti
+                print(f"SUCCESS: Dosya kaydedildi -> {file_path}")
                 
-                # URL oluştur
-                full_url = f"http://127.0.0.1:5000/static/uploads/{unique_filename}"
+                # URL yapısı da değişti: /static/uploads/URUN_ID/dosya.jpg
+                full_url = f"http://127.0.0.1:5000/static/uploads/{new_product.id}/{unique_filename}"
                 saved_urls.append(full_url)
                 
                 # DB'ye ekle
@@ -103,6 +100,7 @@ def create_product():
             except Exception as e:
                 print(f"HATA: Dosya kaydedilemedi! {str(e)}")
 
+    # İlk resmi kapak resmi yap
     if saved_urls:
         new_product.image_url = saved_urls[0]
     
