@@ -1,4 +1,4 @@
-# app/api/products.py
+# app/api/products.py (Garantili Çalışan Sürüm)
 import os
 import uuid
 import shutil
@@ -10,21 +10,34 @@ from sqlalchemy import or_
 
 products_bp = Blueprint('products', __name__)
 
-# 1. TÜM ÜRÜNLERİ GETİR (Arama Destekli)
+# ---------------------------------------------------------
+# 1. TÜM ÜRÜNLERİ GETİR (ARAMA VE KATEGORİ FİLTRESİ)
+# ---------------------------------------------------------
 @products_bp.route('/', methods=['GET'])
 def get_products():
-    search_query = request.args.get('search', '')
-    query = Product.query.filter_by(status='available')
+    # Bu print terminalde çıkarsa yeni kod çalışıyor demektir
+    print("--> YENİ GET_PRODUCTS FONKSİYONU ÇALIŞTI (q ile)") 
 
+    search_query = request.args.get('search', '')
+    category_filter = request.args.get('category', '') 
+
+    # Değişken ismini 'q' yaptım ki eski kodla karışmasın
+    q = Product.query.filter_by(status='available')
+
+    # 1. Kategori Filtresi
+    if category_filter:
+        q = q.filter(Product.category == category_filter)
+
+    # 2. Arama Kelimesi
     if search_query:
         search_filter = or_(
             Product.title.ilike(f'%{search_query}%'),
             Product.description.ilike(f'%{search_query}%'),
-            Product.category.ilike(f'%{search_query}%')
         )
-        query = query.filter(search_filter)
+        q = q.filter(search_filter)
 
-    all_products = query.all()
+    # BURASI DÜZELDİ: Artık 'q.order_by' kullanıyoruz.
+    all_products = q.order_by(Product.created_at.desc()).all()
     
     output = []
     for product in all_products:
@@ -42,7 +55,10 @@ def get_products():
         })
     return jsonify(output), 200
 
-# 2. YENİ ÜRÜN EKLE (ID Klasörlü - Temiz Kod)
+
+# ---------------------------------------------------------
+# 2. YENİ ÜRÜN EKLE
+# ---------------------------------------------------------
 @products_bp.route('/', methods=['POST'])
 @jwt_required()
 def create_product():
@@ -59,7 +75,6 @@ def create_product():
     if not title or not price:
         return jsonify({'message': 'Başlık ve fiyat zorunludur.'}), 400
 
-    # 1. Ürünü DB'ye kaydet (ID oluşsun)
     new_product = Product(
         title=title,
         description=description,
@@ -72,23 +87,19 @@ def create_product():
     db.session.add(new_product)
     db.session.commit()
 
-    # 2. Klasör Yolunu Ayarla
     files = request.files.getlist('images')
     saved_urls = []
 
     base_upload_folder = current_app.config['UPLOAD_FOLDER']
     product_folder = os.path.join(base_upload_folder, str(new_product.id))
 
-    # Klasör yoksa oluştur
     if not os.path.exists(product_folder):
         os.makedirs(product_folder)
 
-    # 3. Dosyaları Kaydet
     for file in files:
         if file and file.filename:
             ext = os.path.splitext(file.filename)[1]
             unique_filename = f"{uuid.uuid4().hex}{ext}"
-            
             file_path = os.path.join(product_folder, unique_filename)
             file.save(file_path)
             
@@ -108,12 +119,14 @@ def create_product():
         'product_id': new_product.id
     }), 201
 
+
+# ---------------------------------------------------------
 # 3. TEK ÜRÜN DETAYI
+# ---------------------------------------------------------
 @products_bp.route('/<int:product_id>', methods=['GET'])
 def get_single_product(product_id):
     product = Product.query.get_or_404(product_id)
     owner = User.query.get(product.owner_id)
-
     images_list = [img.image_url for img in product.images]
 
     return jsonify({
@@ -134,16 +147,16 @@ def get_single_product(product_id):
         }
     }), 200
 
+# ---------------------------------------------------------
 # 4. KULLANICININ KENDİ ÜRÜNLERİ
+# ---------------------------------------------------------
 @products_bp.route('/my-products', methods=['GET'])
 @jwt_required()
 def get_my_products():
     current_user_id = get_jwt_identity()
-    if isinstance(current_user_id, str):
-         current_user_id = int(current_user_id)
+    if isinstance(current_user_id, str): current_user_id = int(current_user_id)
     
     my_products = Product.query.filter_by(owner_id=current_user_id).all()
-    
     output = []
     for product in my_products:
         output.append({
@@ -155,57 +168,50 @@ def get_my_products():
             'category': product.category,
             'listing_type': product.listing_type
         })
-    
     return jsonify(output), 200
 
+# ---------------------------------------------------------
 # 5. ÜRÜN GÜNCELLEME
+# ---------------------------------------------------------
 @products_bp.route('/<int:product_id>', methods=['PUT'])
 @jwt_required()
 def update_product(product_id):
     current_user_id = get_jwt_identity()
-    if isinstance(current_user_id, str):
-         current_user_id = int(current_user_id)
+    if isinstance(current_user_id, str): current_user_id = int(current_user_id)
 
     product = Product.query.get_or_404(product_id)
-
     if product.owner_id != current_user_id:
         return jsonify({'message': 'Yetkisiz işlem.'}), 403
 
     data = request.get_json()
-    
     if data:
         if 'title' in data: product.title = data['title']
         if 'description' in data: product.description = data['description']
         if 'price' in data: product.price = data['price']
         if 'category' in data: product.category = data['category']
-        
         db.session.commit()
         return jsonify({'message': 'Ürün güncellendi.'}), 200
     else:
         return jsonify({'message': 'Veri gönderilmedi.'}), 400
 
-# 6. ÜRÜN SİLME (DOSYA TEMİZLİĞİ EKLENDİ)
+# ---------------------------------------------------------
+# 6. ÜRÜN SİLME
+# ---------------------------------------------------------
 @products_bp.route('/<int:product_id>', methods=['DELETE'])
 @jwt_required()
 def delete_product(product_id):
     current_user_id = get_jwt_identity()
-    if isinstance(current_user_id, str):
-         current_user_id = int(current_user_id)
+    if isinstance(current_user_id, str): current_user_id = int(current_user_id)
 
     product = Product.query.get_or_404(product_id)
-
     if product.owner_id != current_user_id:
         return jsonify({'message': 'Yetkisiz işlem.'}), 403
 
     try:
-        # 1. Dosya Klasörünü Sil
         folder_path = os.path.join(current_app.config['UPLOAD_FOLDER'], str(product.id))
-        
         if os.path.exists(folder_path):
-            shutil.rmtree(folder_path) # İçindekilerle birlikte komple sil
-            print(f"Kullanıcı ürünü sildi, klasör temizlendi: {folder_path}")
+            shutil.rmtree(folder_path)
 
-        # 2. Veritabanından Sil
         db.session.delete(product)
         db.session.commit()
         return jsonify({'message': 'Ürün ve dosyaları silindi.'}), 200
