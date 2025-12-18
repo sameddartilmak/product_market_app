@@ -26,14 +26,10 @@ class User(db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(20), default='customer')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    # --- YENİ EKLENEN ALANLAR (Profil İçin) ---
     bio = db.Column(db.Text, nullable=True)             # Hakkında yazısı
     location = db.Column(db.String(100), nullable=True)   # Konum bilgisi
     profile_image = db.Column(db.String(255), nullable=True) # Profil resmi URL'si
-    # -------------------------------------------
 
-    # İlişkiler
     products = db.relationship('Product', backref='owner', lazy=True)
 
     def set_password(self, password):

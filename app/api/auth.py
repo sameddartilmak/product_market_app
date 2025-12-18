@@ -59,6 +59,9 @@ def login():
     if user and user.check_password(password):
         access_token = create_access_token(identity=str(user.id))
         
+        raw_role = user.role if user.role else 'customer'
+        clean_role = str(raw_role).strip().lower()
+        
         return jsonify({
             'message': 'Giriş başarılı',
             'access_token': access_token,
@@ -68,7 +71,8 @@ def login():
                 'email': user.email,
                 'profile_image': user.profile_image,
                 'bio': user.bio,
-                'location': user.location
+                'location': user.location,
+                'role': user.role
             }
         }), 200
     else:
