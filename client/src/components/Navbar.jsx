@@ -1,61 +1,58 @@
 // client/src/components/Navbar.jsx
-import { Link, useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
+import { Link } from 'react-router-dom'
+import { useContext } from 'react'
+import { AuthContext } from '../context/AuthContext'
 
 function Navbar() {
-  const navigate = useNavigate()
-  
-  // LocalStorage'dan bilgileri çekiyoruz
-  const token = localStorage.getItem('token')
-  const username = localStorage.getItem('username')
-  const role = localStorage.getItem('role') // 'admin' veya 'customer'
-
-  // Token varsa giriş yapılmış demektir
-  const isLoggedIn = !!token
-
-  const handleLogout = () => {
-    localStorage.clear() // Tüm verileri (token, user, role) sil
-    toast.info('Çıkış yapıldı 👋')
-    navigate('/login')
-    // Navbar'ın yenilenmesi için sayfayı reload ediyoruz
-    window.location.reload()
-  }
+  // Verileri artık direkt LocalStorage'dan değil, Context'ten alıyoruz.
+  // Bu sayede profil resmi değişince burası da anında değişiyor.
+  const { user, logout } = useContext(AuthContext)
 
   return (
     <nav style={styles.navbar}>
       <div style={styles.container}>
         
-        {/* Logo: Admin ise panele, Müşteri ise vitrine gider */}
-        <Link to={role === 'admin' ? "/admin" : "/"} style={styles.brand}>
-           {role === 'admin' ? '🛡️ Yönetim Paneli' : '📦 Kiralama App'}
+        {/* LOGO: Admin ise panele, Müşteri ise vitrine gider */}
+        <Link to={user?.role === 'admin' ? "/admin" : "/"} style={styles.brand}>
+           {user?.role === 'admin' ? '🛡️ Yönetim Paneli' : '📦 Kiralama App'}
         </Link>
 
         <div style={styles.navLinks}>
-          {isLoggedIn ? (
+          {user ? (
             <>
-              {/* --- ADMİN İSE GÖSTERİLECEKLER --- */}
-              {role === 'admin' ? (
+              {/* --- ADMİN GÖRÜNÜMÜ --- */}
+              {user.role === 'admin' ? (
                 <>
                   <span style={{color:'#ccc'}}>Hoşgeldin, Admin</span>
-                  {/* Adminin Vitrin veya Profil butonuna ihtiyacı yok, her şey panelde */}
                 </>
               ) : (
-              /* --- MÜŞTERİ İSE GÖSTERİLECEKLER --- */
+                /* --- MÜŞTERİ GÖRÜNÜMÜ --- */
                 <>
                   <Link to="/" style={styles.link}>Vitrin</Link>
-                  <Link to="/profile" style={styles.link}>Profilim</Link>
-                  <Link to="/messages" style={styles.link}>💬 Mesajlarım</Link>
+                  <Link to="/messages" style={styles.link}>💬 Mesajlar</Link>
                   <Link to="/add-product" style={styles.addButton}>+ İlan Ver</Link>
-                  <div style={styles.userBadge}>
-                    <span style={{fontWeight: 'bold'}}>{username}</span>
-                  </div>
+                  
+                  {/* --- PROFİL ALANI (RESİM + İSİM) --- */}
+                  <Link to="/profile" style={styles.profileBadge}>
+                    <img 
+                        src={user.profile_image || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
+                        alt="Profil" 
+                        style={styles.avatar} 
+                    />
+                    <div style={styles.userInfo}>
+                        <span style={styles.username}>{user.username}</span>
+                        <span style={styles.roleTag}>Müşteri</span>
+                    </div>
+                  </Link>
+                  {/* ---------------------------------- */}
                 </>
               )}
 
-              {/* Herkes için Çıkış Butonu */}
-              <button onClick={handleLogout} style={styles.logoutBtn}>Çıkış</button>
+              {/* ÇIKIŞ BUTONU */}
+              <button onClick={logout} style={styles.logoutBtn}>Çıkış</button>
             </>
           ) : (
+            /* --- GİRİŞ YAPMAMIŞ KULLANICI --- */
             <Link to="/login" style={styles.link}>Giriş Yap</Link>
           )}
         </div>
@@ -63,12 +60,13 @@ function Navbar() {
     </nav>
   )
 }
-// CSS Stilleri (Javascript Objesi Olarak)
+
+// CSS Stilleri
 const styles = {
   navbar: {
-    backgroundColor: '#1f2937', // Daha modern koyu gri
+    backgroundColor: '#1f2937', // Koyu gri (Modern)
     color: '#fff',
-    padding: '1rem 0',
+    padding: '0.8rem 0', // Biraz incelttik
     marginBottom: '2rem',
     boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
   },
@@ -108,22 +106,44 @@ const styles = {
     fontWeight: 'bold',
     fontSize: '0.9rem',
     transition: 'transform 0.2s',
-    display: 'inline-block'
   },
-  userBadge: {
+  
+  // --- YENİ EKLENEN PROFİL STİLLERİ ---
+  profileBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    textDecoration: 'none',
+    backgroundColor: 'rgba(255,255,255,0.1)', // Hafif transparan arka plan
+    padding: '5px 12px',
+    borderRadius: '30px',
+    transition: 'background 0.3s',
+    border: '1px solid rgba(255,255,255,0.2)'
+  },
+  avatar: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    border: '2px solid #10b981' // Yeşil çerçeve
+  },
+  userInfo: {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'flex-end', // Sağa yasla
-    lineHeight: '1.2',
-    borderRight: '1px solid #4b5563', // Ayırıcı çizgi
-    paddingRight: '15px',
-    marginRight: '-5px'
+    lineHeight: '1.1'
+  },
+  username: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: '0.9rem'
   },
   roleTag: {
-    fontSize: '0.75rem',
+    fontSize: '0.7rem',
     color: '#9ca3af', // Açık gri
     textTransform: 'uppercase'
   },
+  // ------------------------------------
+
   logoutBtn: {
     backgroundColor: '#ef4444', // Kırmızı
     color: 'white',
@@ -133,7 +153,8 @@ const styles = {
     cursor: 'pointer',
     fontSize: '0.9rem',
     fontWeight: 'bold',
-    transition: 'background 0.3s'
+    transition: 'background 0.3s',
+    marginLeft: '10px'
   }
 }
 

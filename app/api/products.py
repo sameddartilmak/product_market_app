@@ -1,4 +1,3 @@
-# app/api/products.py (Garantili Çalışan Sürüm)
 import os
 import uuid
 import shutil
@@ -10,25 +9,18 @@ from sqlalchemy import or_
 
 products_bp = Blueprint('products', __name__)
 
-# ---------------------------------------------------------
-# 1. TÜM ÜRÜNLERİ GETİR (ARAMA VE KATEGORİ FİLTRESİ)
-# ---------------------------------------------------------
 @products_bp.route('/', methods=['GET'])
 def get_products():
-    # Bu print terminalde çıkarsa yeni kod çalışıyor demektir
     print("--> YENİ GET_PRODUCTS FONKSİYONU ÇALIŞTI (q ile)") 
 
     search_query = request.args.get('search', '')
     category_filter = request.args.get('category', '') 
 
-    # Değişken ismini 'q' yaptım ki eski kodla karışmasın
     q = Product.query.filter_by(status='available')
 
-    # 1. Kategori Filtresi
     if category_filter:
         q = q.filter(Product.category == category_filter)
 
-    # 2. Arama Kelimesi
     if search_query:
         search_filter = or_(
             Product.title.ilike(f'%{search_query}%'),
@@ -36,7 +28,6 @@ def get_products():
         )
         q = q.filter(search_filter)
 
-    # BURASI DÜZELDİ: Artık 'q.order_by' kullanıyoruz.
     all_products = q.order_by(Product.created_at.desc()).all()
     
     output = []
@@ -55,10 +46,6 @@ def get_products():
         })
     return jsonify(output), 200
 
-
-# ---------------------------------------------------------
-# 2. YENİ ÜRÜN EKLE
-# ---------------------------------------------------------
 @products_bp.route('/', methods=['POST'])
 @jwt_required()
 def create_product():
@@ -119,10 +106,6 @@ def create_product():
         'product_id': new_product.id
     }), 201
 
-
-# ---------------------------------------------------------
-# 3. TEK ÜRÜN DETAYI
-# ---------------------------------------------------------
 @products_bp.route('/<int:product_id>', methods=['GET'])
 def get_single_product(product_id):
     product = Product.query.get_or_404(product_id)
@@ -147,9 +130,6 @@ def get_single_product(product_id):
         }
     }), 200
 
-# ---------------------------------------------------------
-# 4. KULLANICININ KENDİ ÜRÜNLERİ
-# ---------------------------------------------------------
 @products_bp.route('/my-products', methods=['GET'])
 @jwt_required()
 def get_my_products():
@@ -170,9 +150,6 @@ def get_my_products():
         })
     return jsonify(output), 200
 
-# ---------------------------------------------------------
-# 5. ÜRÜN GÜNCELLEME
-# ---------------------------------------------------------
 @products_bp.route('/<int:product_id>', methods=['PUT'])
 @jwt_required()
 def update_product(product_id):
@@ -194,9 +171,6 @@ def update_product(product_id):
     else:
         return jsonify({'message': 'Veri gönderilmedi.'}), 400
 
-# ---------------------------------------------------------
-# 6. ÜRÜN SİLME
-# ---------------------------------------------------------
 @products_bp.route('/<int:product_id>', methods=['DELETE'])
 @jwt_required()
 def delete_product(product_id):

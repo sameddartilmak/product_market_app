@@ -1,4 +1,4 @@
-# app/api/auth.py
+# app/api/auth.py (DÜZELTİLMİŞ VE TEMİZLENMİŞ VERSİYON)
 import os
 import uuid
 from flask import Blueprint, request, jsonify, current_app
@@ -7,7 +7,7 @@ from app import db, bcrypt
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
 # =========================================================
-# 1. BLUEPRINT TANIMI (EN ÜSTTE OLMAK ZORUNDA!)
+# 1. BLUEPRINT TANIMI (EN ÜSTTE!)
 # =========================================================
 auth_bp = Blueprint('auth', __name__)
 
@@ -45,24 +45,35 @@ def register():
 def login():
     data = request.get_json()
     
-    if not data or not data.get('email') or not data.get('password'):
-        return jsonify({'message': 'Eksik bilgi!'}), 400
-        
-    user = User.query.filter_by(email=data['email']).first()
+    # Kullanıcı Adı ve Şifre alıyoruz
+    username = data.get('username')
+    password = data.get('password')
     
-    if user and user.check_password(data['password']):
+    if not username or not password:
+        return jsonify({'message': 'Kullanıcı adı ve şifre zorunludur!'}), 400
+        
+    # Veritabanında ara
+    user = User.query.filter_by(username=username).first()
+    
+    # Kullanıcı varsa ve şifre doğruysa
+    if user and user.check_password(password):
         access_token = create_access_token(identity=str(user.id))
+        
         return jsonify({
             'message': 'Giriş başarılı',
             'access_token': access_token,
             'user': {
                 'id': user.id,
                 'username': user.username,
-                'email': user.email
+                'email': user.email,
+                'profile_image': user.profile_image,
+                'bio': user.bio,
+                'location': user.location
             }
         }), 200
     else:
-        return jsonify({'message': 'Hatalı e-posta veya şifre'}), 401
+        # Hatalı giriş
+        return jsonify({'message': 'Hatalı kullanıcı adı veya şifre'}), 401
 
 # =========================================================
 # 4. PROFİL GETİR (GET)
