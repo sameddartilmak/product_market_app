@@ -1,8 +1,20 @@
-// client/src/pages/Register.jsx
 import { useState } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import { useNavigate, Link } from 'react-router-dom'
+
+// --- MANTINE IMPORTLARI ---
+import { 
+  TextInput, 
+  PasswordInput, 
+  Button, 
+  Paper, 
+  Title, 
+  Text, 
+  Container, 
+  Anchor,
+  Stack 
+} from '@mantine/core';
 
 function Register() {
   const navigate = useNavigate()
@@ -13,6 +25,7 @@ function Register() {
     password: ''
   })
 
+  // --- MANTIK KISMI (AYNEN KORUNDU) ---
   const handleChange = (e) => {
     setFormData({
         ...formData,
@@ -41,38 +54,64 @@ function Register() {
     }
   }
 
+  // --- TASARIM KISMI (MANTINE İLE YENİLENDİ) ---
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', textAlign: 'center', fontFamily: 'Arial' }}>
-      <h2>Kayıt Ol</h2>
-      <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        
-        <input 
-          type="text" name="username" placeholder="Kullanıcı Adı" 
-          value={formData.username} onChange={handleChange} required
-          style={{ padding: '10px' }}
-        />
-        
-        <input 
-          type="email" name="email" placeholder="Email Adresi" 
-          value={formData.email} onChange={handleChange} required
-          style={{ padding: '10px' }}
-        />
+    <Container size={420} my={40}>
+      
+      {/* Başlık ve Yönlendirme */}
+      <Title ta="center" order={2}>
+        Aramıza Katılın! 🚀
+      </Title>
+      
+      <Text c="dimmed" size="sm" ta="center" mt={5}>
+        Zaten bir hesabınız var mı?{' '}
+        <Anchor component={Link} to="/login" size="sm">
+          Giriş Yapın
+        </Anchor>
+      </Text>
 
-        <input 
-          type="password" name="password" placeholder="Şifre" 
-          value={formData.password} onChange={handleChange} required
-          style={{ padding: '10px' }}
-        />
-        
-        <button type="submit" style={{ padding: '10px', backgroundColor: '#3498db', color: 'white', border: 'none', cursor: 'pointer', fontWeight:'bold' }}>
-          Kayıt Ol
-        </button>
-      </form>
+      {/* Form Kartı */}
+      <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+        <form onSubmit={handleRegister}>
+          <Stack gap="md"> {/* Elemanlar arasına otomatik boşluk bırakır */}
+            
+            <TextInput 
+              label="Kullanıcı Adı" 
+              placeholder="Adınız Soyadınız" 
+              name="username"
+              value={formData.username} 
+              onChange={handleChange} 
+              required 
+            />
+            
+            <TextInput 
+              label="Email Adresi" 
+              placeholder="ornek@email.com" 
+              name="email"
+              type="email"
+              value={formData.email} 
+              onChange={handleChange} 
+              required 
+            />
 
-      <p style={{marginTop: '20px'}}>
-        Zaten hesabın var mı? <Link to="/login" style={{color: '#3498db'}}>Giriş Yap</Link>
-      </p>
-    </div>
+            <PasswordInput 
+              label="Şifre" 
+              placeholder="Güçlü bir şifre seçin" 
+              name="password"
+              value={formData.password} 
+              onChange={handleChange} 
+              required 
+            />
+
+            <Button type="submit" fullWidth mt="xl" color="green">
+              Kayıt Ol ✨
+            </Button>
+            
+          </Stack>
+        </form>
+      </Paper>
+
+    </Container>
   )
 }
 

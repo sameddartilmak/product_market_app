@@ -5,12 +5,11 @@ import axios from 'axios'
 import { toast } from 'react-toastify'
 
 function AdminPanel() {
+  // --- MANTIK KISMI (AYNEN KORUNDU) ---
   const navigate = useNavigate()
   
-  // Hangi sekmedeyiz?
-  const [activeTab, setActiveTab] = useState('dashboard') // dashboard, users, products, transactions
+  const [activeTab, setActiveTab] = useState('dashboard') 
   
-  // Veriler
   const [stats, setStats] = useState({ users: 0, products: 0, income: 0 })
   const [dataList, setDataList] = useState({ users: [], products: [], transactions: [] })
   const [loading, setLoading] = useState(true)
@@ -18,7 +17,6 @@ function AdminPanel() {
   const token = localStorage.getItem('token')
 
   useEffect(() => {
-    // Admin değilse at
     if (localStorage.getItem('role') !== 'admin') {
         navigate('/')
         return
@@ -28,11 +26,9 @@ function AdminPanel() {
 
   const fetchAllData = async () => {
     try {
-        // İstatistikleri Çek
         const resStats = await axios.get('http://127.0.0.1:5000/api/admin/stats', { headers: { Authorization: `Bearer ${token}` }})
         setStats(resStats.data)
 
-        // Tablo Verilerini Çek
         const resData = await axios.get('http://127.0.0.1:5000/api/admin/all-data', { headers: { Authorization: `Bearer ${token}` }})
         setDataList(resData.data)
         
@@ -42,7 +38,6 @@ function AdminPanel() {
     }
   }
 
-  // --- SİLME İŞLEMLERİ ---
   const handleDelete = async (type, id) => {
     if (!window.confirm("Bu kaydı silmek istediğinize emin misiniz?")) return;
 
@@ -51,45 +46,104 @@ function AdminPanel() {
             headers: { Authorization: `Bearer ${token}` }
         })
         toast.success("Kayıt silindi.")
-        fetchAllData() // Tabloyu yenile
+        fetchAllData() 
     } catch (error) {
         toast.error("Silme başarısız.")
     }
   }
 
-  if (loading) return <div style={{textAlign:'center', marginTop:'50px'}}>Yönetici Paneli Yükleniyor...</div>
+  if (loading) return (
+    <div style={{display:'flex', justifyContent:'center', alignItems:'center', height:'100vh', backgroundColor:'#f3f4f6', color:'#4f46e5'}}>
+        <h3>Yönetici Paneli Yükleniyor...</h3>
+    </div>
+  )
 
+  // --- YENİ TASARIM (JSX) ---
   return (
     <div style={styles.wrapper}>
       
       {/* SOL MENÜ (SIDEBAR) */}
       <div style={styles.sidebar}>
-        <h3 style={{color:'white', textAlign:'center', marginBottom:'30px'}}>YÖNETİM</h3>
-        <button style={activeTab === 'dashboard' ? styles.activeMenu : styles.menuItem} onClick={() => setActiveTab('dashboard')}>📊 Gösterge Paneli</button>
-        <button style={activeTab === 'users' ? styles.activeMenu : styles.menuItem} onClick={() => setActiveTab('users')}>👥 Kullanıcılar</button>
-        <button style={activeTab === 'products' ? styles.activeMenu : styles.menuItem} onClick={() => setActiveTab('products')}>📦 Ürünler</button>
-        <button style={activeTab === 'transactions' ? styles.activeMenu : styles.menuItem} onClick={() => setActiveTab('transactions')}>💰 İşlemler</button>
+        <div style={styles.sidebarHeader}>
+            <h2 style={styles.brand}>YÖNETİCİ</h2>
+            <p style={styles.roleBadge}>Admin Paneli</p>
+        </div>
+        
+        <nav style={styles.nav}>
+            <button 
+                style={activeTab === 'dashboard' ? styles.activeMenu : styles.menuItem} 
+                onClick={() => setActiveTab('dashboard')}
+            >
+                📊 Gösterge Paneli
+            </button>
+            <button 
+                style={activeTab === 'users' ? styles.activeMenu : styles.menuItem} 
+                onClick={() => setActiveTab('users')}
+            >
+                👥 Kullanıcılar
+            </button>
+            <button 
+                style={activeTab === 'products' ? styles.activeMenu : styles.menuItem} 
+                onClick={() => setActiveTab('products')}
+            >
+                📦 Ürünler
+            </button>
+            <button 
+                style={activeTab === 'transactions' ? styles.activeMenu : styles.menuItem} 
+                onClick={() => setActiveTab('transactions')}
+            >
+                💰 İşlemler
+            </button>
+        </nav>
+
+        <div style={styles.sidebarFooter}>
+            <button onClick={() => navigate('/')} style={styles.exitBtn}>Siteye Dön ↩</button>
+        </div>
       </div>
 
       {/* SAĞ İÇERİK (CONTENT) */}
       <div style={styles.content}>
         
+        {/* Başlık Alanı */}
+        <div style={styles.topBar}>
+            <h1 style={styles.pageTitle}>
+                {activeTab === 'dashboard' && 'Genel Bakış'}
+                {activeTab === 'users' && 'Kullanıcı Listesi'}
+                {activeTab === 'products' && 'Ürün Envanteri'}
+                {activeTab === 'transactions' && 'Finansal İşlemler'}
+            </h1>
+            <div style={styles.userProfile}>Admin</div>
+        </div>
+
         {/* --- 1. DASHBOARD --- */}
         {activeTab === 'dashboard' && (
-            <div>
-                <h2>Genel Durum</h2>
+            <div style={styles.dashboardContainer}>
                 <div style={styles.statsGrid}>
-                    <div style={{...styles.card, borderLeft:'5px solid #3498db'}}>
-                        <h3>Kullanıcılar</h3>
-                        <h1>{stats.users}</h1>
+                    {/* Kullanıcı Kartı */}
+                    <div style={styles.card}>
+                        <div style={{...styles.iconBox, backgroundColor:'#e0e7ff', color:'#4338ca'}}>👥</div>
+                        <div>
+                            <p style={styles.cardLabel}>Toplam Kullanıcı</p>
+                            <h2 style={styles.cardValue}>{stats.users}</h2>
+                        </div>
                     </div>
-                    <div style={{...styles.card, borderLeft:'5px solid #2ecc71'}}>
-                        <h3>Ürünler</h3>
-                        <h1>{stats.products}</h1>
+
+                    {/* Ürün Kartı */}
+                    <div style={styles.card}>
+                        <div style={{...styles.iconBox, backgroundColor:'#d1fae5', color:'#065f46'}}>📦</div>
+                        <div>
+                            <p style={styles.cardLabel}>Aktif Ürünler</p>
+                            <h2 style={styles.cardValue}>{stats.products}</h2>
+                        </div>
                     </div>
-                    <div style={{...styles.card, borderLeft:'5px solid #9b59b6'}}>
-                        <h3>Ciro (%3)</h3>
-                        <h1 style={{color:'#9b59b6'}}>{stats.income} TL</h1>
+
+                    {/* Ciro Kartı */}
+                    <div style={styles.card}>
+                        <div style={{...styles.iconBox, backgroundColor:'#fae8ff', color:'#86198f'}}>💰</div>
+                        <div>
+                            <p style={styles.cardLabel}>Toplam Ciro (%3)</p>
+                            <h2 style={styles.cardValue}>{stats.income} TL</h2>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -97,22 +151,29 @@ function AdminPanel() {
 
         {/* --- 2. KULLANICILAR TABLOSU --- */}
         {activeTab === 'users' && (
-            <div>
-                <h2>Kullanıcı Yönetimi</h2>
+            <div style={styles.tableContainer}>
                 <table style={styles.table}>
                     <thead>
-                        <tr style={styles.th}>
-                            <th>ID</th><th>Kullanıcı Adı</th><th>Email</th><th>Rol</th><th>İşlem</th>
+                        <tr style={styles.theadRow}>
+                            <th style={styles.th}>ID</th>
+                            <th style={styles.th}>Kullanıcı Adı</th>
+                            <th style={styles.th}>Email</th>
+                            <th style={styles.th}>Rol</th>
+                            <th style={styles.th}>İşlem</th>
                         </tr>
                     </thead>
                     <tbody>
                         {dataList.users.map(u => (
                             <tr key={u.id} style={styles.tr}>
-                                <td>{u.id}</td>
-                                <td>{u.username}</td>
-                                <td>{u.email}</td>
-                                <td>{u.role}</td>
-                                <td>
+                                <td style={styles.td}>#{u.id}</td>
+                                <td style={styles.td}>
+                                    <span style={{fontWeight:'600', color:'#111827'}}>{u.username}</span>
+                                </td>
+                                <td style={styles.td}>{u.email}</td>
+                                <td style={styles.td}>
+                                    <span style={u.role === 'admin' ? styles.badgeAdmin : styles.badgeUser}>{u.role}</span>
+                                </td>
+                                <td style={styles.td}>
                                     {u.role !== 'admin' && (
                                         <button onClick={() => handleDelete('user', u.id)} style={styles.delBtn}>Sil</button>
                                     )}
@@ -126,23 +187,31 @@ function AdminPanel() {
 
         {/* --- 3. ÜRÜNLER TABLOSU --- */}
         {activeTab === 'products' && (
-            <div>
-                <h2>Ürün Yönetimi</h2>
+            <div style={styles.tableContainer}>
                 <table style={styles.table}>
                     <thead>
-                        <tr style={styles.th}>
-                            <th>ID</th><th>Ürün</th><th>Fiyat</th><th>Satıcı</th><th>Durum</th><th>İşlem</th>
+                        <tr style={styles.theadRow}>
+                            <th style={styles.th}>ID</th>
+                            <th style={styles.th}>Ürün</th>
+                            <th style={styles.th}>Fiyat</th>
+                            <th style={styles.th}>Satıcı</th>
+                            <th style={styles.th}>Durum</th>
+                            <th style={styles.th}>İşlem</th>
                         </tr>
                     </thead>
                     <tbody>
                         {dataList.products.map(p => (
                             <tr key={p.id} style={styles.tr}>
-                                <td>{p.id}</td>
-                                <td>{p.title}</td>
-                                <td>{p.price} TL</td>
-                                <td>{p.owner}</td>
-                                <td>{p.status}</td>
-                                <td>
+                                <td style={styles.td}>#{p.id}</td>
+                                <td style={styles.td}>
+                                    <span style={{fontWeight:'600'}}>{p.title}</span>
+                                </td>
+                                <td style={styles.td}>{p.price} TL</td>
+                                <td style={styles.td}>{p.owner}</td>
+                                <td style={styles.td}>
+                                    <span style={p.status === 'active' ? styles.badgeSuccess : styles.badgeWarning}>{p.status}</span>
+                                </td>
+                                <td style={styles.td}>
                                     <button onClick={() => handleDelete('product', p.id)} style={styles.delBtn}>İlanı Kaldır</button>
                                 </td>
                             </tr>
@@ -154,24 +223,31 @@ function AdminPanel() {
 
         {/* --- 4. İŞLEMLER TABLOSU --- */}
         {activeTab === 'transactions' && (
-            <div>
-                <h2>İşlem Geçmişi</h2>
+            <div style={styles.tableContainer}>
                 <table style={styles.table}>
                     <thead>
-                        <tr style={styles.th}>
-                            <th>ID</th><th>Ürün</th><th>Alıcı</th><th>Satıcı</th><th>Tutar</th><th>Tür</th><th>İşlem</th>
+                        <tr style={styles.theadRow}>
+                            <th style={styles.th}>ID</th>
+                            <th style={styles.th}>Ürün</th>
+                            <th style={styles.th}>Alıcı</th>
+                            <th style={styles.th}>Satıcı</th>
+                            <th style={styles.th}>Tutar</th>
+                            <th style={styles.th}>Tür</th>
+                            <th style={styles.th}>İşlem</th>
                         </tr>
                     </thead>
                     <tbody>
                         {dataList.transactions.map(t => (
                             <tr key={t.id} style={styles.tr}>
-                                <td>{t.id}</td>
-                                <td>{t.product}</td>
-                                <td>{t.buyer}</td>
-                                <td>{t.seller}</td>
-                                <td>{t.price} TL</td>
-                                <td>{t.type}</td>
-                                <td>
+                                <td style={styles.td}>#{t.id}</td>
+                                <td style={styles.td}>{t.product}</td>
+                                <td style={styles.td}>{t.buyer}</td>
+                                <td style={styles.td}>{t.seller}</td>
+                                <td style={{...styles.td, color:'#059669', fontWeight:'bold'}}>{t.price} TL</td>
+                                <td style={styles.td}>
+                                    <span style={styles.badgeInfo}>{t.type}</span>
+                                </td>
+                                <td style={styles.td}>
                                     <button onClick={() => handleDelete('transaction', t.id)} style={styles.delBtn}>İptal Et</button>
                                 </td>
                             </tr>
@@ -186,24 +262,84 @@ function AdminPanel() {
   )
 }
 
+// --- MODERN CSS STYLES ---
 const styles = {
-  wrapper: { display: 'flex', minHeight: '100vh', backgroundColor: '#f4f6f9' },
-  sidebar: { width: '250px', backgroundColor: '#34495e', color: 'white', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' },
-  content: { flex: 1, padding: '40px' },
+  wrapper: { display: 'flex', minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: '"Segoe UI", sans-serif' },
   
-  menuItem: { padding: '15px', backgroundColor: 'transparent', border: 'none', color: '#bdc3c7', textAlign: 'left', cursor: 'pointer', fontSize: '1rem' },
-  activeMenu: { padding: '15px', backgroundColor: '#2c3e50', border: 'none', color: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '1rem', borderLeft: '4px solid #3498db' },
-  
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginTop:'20px' },
-  card: { backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', textAlign: 'center' },
-  
-  table: { width: '100%', borderCollapse: 'collapse', backgroundColor: 'white', marginTop: '20px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' },
-  th: { backgroundColor: '#ecf0f1', textAlign: 'left', padding: '15px', borderBottom: '2px solid #bdc3c7' },
-  tr: { borderBottom: '1px solid #eee' },
-  delBtn: { backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }
-}
+  // SIDEBAR STYLES
+  sidebar: { 
+    width: '280px', 
+    backgroundColor: '#111827', // Koyu renk
+    color: '#e5e7eb', 
+    display: 'flex', 
+    flexDirection: 'column', 
+    position: 'fixed',
+    height: '100%',
+    left: 0,
+    top: 0
+  },
+  sidebarHeader: { padding: '30px 20px', borderBottom: '1px solid #1f2937', textAlign: 'center' },
+  brand: { margin: 0, fontSize: '1.5rem', fontWeight: '800', letterSpacing: '1px', color: 'white' },
+  roleBadge: { fontSize: '0.8rem', color: '#9ca3af', marginTop: '5px', textTransform: 'uppercase', letterSpacing: '2px' },
+  nav: { flex: 1, padding: '20px 10px', display: 'flex', flexDirection: 'column', gap: '5px' },
+  sidebarFooter: { padding: '20px', borderTop: '1px solid #1f2937' },
+  exitBtn: { width: '100%', padding: '10px', backgroundColor: '#374151', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', transition: '0.2s' },
 
-// Tablo hücreleri (td) için global stil eklemek yerine JSX içinde inline style zor olduğu için basit tuttum.
-// React'ta global CSS veya styled-component daha iyidir ama bu iş görür.
+  menuItem: { 
+    padding: '14px 20px', 
+    backgroundColor: 'transparent', 
+    border: 'none', 
+    color: '#9ca3af', 
+    textAlign: 'left', 
+    cursor: 'pointer', 
+    fontSize: '0.95rem', 
+    borderRadius: '8px',
+    transition: 'all 0.2s',
+    fontWeight: '500'
+  },
+  activeMenu: { 
+    padding: '14px 20px', 
+    backgroundColor: '#4f46e5', // İndigo aktif renk
+    border: 'none', 
+    color: 'white', 
+    textAlign: 'left', 
+    cursor: 'pointer', 
+    fontSize: '0.95rem', 
+    borderRadius: '8px',
+    fontWeight: '600',
+    boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.4)'
+  },
+
+  // CONTENT STYLES
+  content: { flex: 1, padding: '40px', marginLeft: '280px' }, // Sidebar genişliği kadar boşluk
+  topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' },
+  pageTitle: { fontSize: '2rem', fontWeight: 'bold', color: '#111827', margin: 0 },
+  userProfile: { backgroundColor: 'white', padding: '8px 20px', borderRadius: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontWeight: '600', color: '#374151' },
+
+  // DASHBOARD
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px' },
+  card: { backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', alignItems: 'center', gap: '20px' },
+  iconBox: { width: '60px', height: '60px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem' },
+  cardLabel: { margin: 0, color: '#6b7280', fontSize: '0.9rem', fontWeight: '600' },
+  cardValue: { margin: '5px 0 0 0', fontSize: '2rem', fontWeight: '800', color: '#111827' },
+
+  // TABLE STYLES
+  tableContainer: { backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', overflow: 'hidden' },
+  table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left' },
+  theadRow: { backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' },
+  th: { padding: '16px 24px', fontSize: '0.75rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' },
+  tr: { borderBottom: '1px solid #f3f4f6', transition: 'background 0.2s' },
+  td: { padding: '16px 24px', fontSize: '0.95rem', color: '#4b5563' },
+  
+  // BUTTONS & BADGES
+  delBtn: { backgroundColor: '#fee2e2', color: '#ef4444', border: '1px solid #fecaca', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', transition: '0.2s' },
+  
+  badgeAdmin: { backgroundColor: '#e0e7ff', color: '#4338ca', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' },
+  badgeUser: { backgroundColor: '#f3f4f6', color: '#4b5563', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600' },
+  
+  badgeSuccess: { backgroundColor: '#d1fae5', color: '#065f46', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' },
+  badgeWarning: { backgroundColor: '#fef3c7', color: '#92400e', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' },
+  badgeInfo: { backgroundColor: '#dbeafe', color: '#1e40af', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' }
+}
 
 export default AdminPanel

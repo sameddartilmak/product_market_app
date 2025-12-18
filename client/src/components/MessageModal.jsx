@@ -33,7 +33,7 @@ function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) 
 
         toast.success("Mesaj gönderildi! 📨")
         setContent('')
-        onClose() // Pencereyi kapat
+        onClose() 
 
     } catch (error) {
         toast.error("Mesaj gönderilemedi.")
@@ -42,28 +42,45 @@ function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) 
     }
   }
 
+  // --- TASARIM KISMI ---
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
+        
+        {/* Başlık ve Kapat Butonu */}
         <div style={styles.header}>
-            <h3>Satıcıya Mesaj Gönder</h3>
-            <button onClick={onClose} style={styles.closeBtn}>X</button>
+            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                <span style={{fontSize:'1.5rem'}}>💬</span>
+                <h3 style={styles.title}>Satıcıya Sor</h3>
+            </div>
+            <button onClick={onClose} style={styles.closeBtn}>×</button>
         </div>
         
-        <p style={{color:'#666', fontSize:'0.9rem', marginBottom:'10px'}}>
-            <strong>Ürün:</strong> {productTitle}
-        </p>
+        {/* Ürün Bilgisi Kartı (Context) */}
+        <div style={styles.productBadge}>
+            <span style={{color:'#666', fontSize:'0.85rem'}}>İlgili Ürün:</span>
+            <div style={styles.productTitle}>
+                🛍️ {productTitle}
+            </div>
+        </div>
 
-        <textarea 
-            rows="5" 
-            placeholder="Merhaba, ürün hala satılık mı? Son fiyat ne olur?" 
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            style={styles.textarea}
-        ></textarea>
+        {/* Mesaj Yazma Alanı */}
+        <div style={{marginBottom: '20px'}}>
+            <label style={styles.label}>Mesajınız</label>
+            <textarea 
+                rows="5" 
+                placeholder="Merhaba, ürün hala satılık mı? Son fiyat ne olur?" 
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                style={styles.textarea}
+            ></textarea>
+        </div>
 
+        {/* Aksiyon Butonları */}
         <div style={styles.footer}>
-            <button onClick={onClose} style={styles.cancelBtn}>İptal</button>
+            <button onClick={onClose} style={styles.cancelBtn}>
+                Vazgeç
+            </button>
             <button onClick={handleSend} style={styles.sendBtn} disabled={sending}>
                 {sending ? 'Gönderiliyor...' : 'Gönder ➤'}
             </button>
@@ -73,28 +90,118 @@ function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) 
   )
 }
 
+// --- MODERN STYLES ---
 const styles = {
   overlay: {
-    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)', // Arka planı karart
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    zIndex: 1000
+    position: 'fixed', 
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)', // Biraz daha koyu
+    backdropFilter: 'blur(5px)',        // Arka planı bulanıklaştırır (Buzlu cam etkisi)
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    zIndex: 1000,
+    animation: 'fadeIn 0.2s ease-out'
   },
   modal: {
-    backgroundColor: 'white', width: '90%', maxWidth: '500px',
-    padding: '20px', borderRadius: '10px', boxShadow: '0 5px 15px rgba(0,0,0,0.3)'
+    backgroundColor: '#ffffff', 
+    width: '90%', 
+    maxWidth: '500px',
+    padding: '25px', 
+    borderRadius: '16px', // Daha oval köşeler
+    boxShadow: '0 20px 60px rgba(0,0,0,0.2)', // Derinlik katan gölge
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'relative'
   },
   header: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px'
+    display: 'flex', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: '20px', 
+    borderBottom: '1px solid #f0f0f0', 
+    paddingBottom: '15px'
   },
-  closeBtn: { background:'none', border:'none', fontSize:'1.2rem', cursor:'pointer' },
+  title: {
+    margin: 0,
+    fontSize: '1.25rem',
+    color: '#333',
+    fontWeight: '700'
+  },
+  closeBtn: { 
+    background: '#f1f3f5', 
+    border: 'none', 
+    fontSize: '1.5rem', 
+    cursor: 'pointer',
+    color: '#868e96',
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%', // Yuvarlak kapatma butonu
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background 0.2s'
+  },
+  productBadge: {
+    backgroundColor: '#f8f9fa',
+    padding: '12px',
+    borderRadius: '8px',
+    marginBottom: '20px',
+    border: '1px solid #e9ecef'
+  },
+  productTitle: {
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginTop: '4px',
+    fontSize: '1rem'
+  },
+  label: {
+    display: 'block',
+    marginBottom: '8px',
+    fontWeight: '500',
+    color: '#555',
+    fontSize: '0.9rem'
+  },
   textarea: {
-    width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ddd',
-    fontSize: '1rem', fontFamily: 'inherit', resize: 'vertical'
+    width: '100%', 
+    padding: '12px', 
+    borderRadius: '8px', 
+    border: '1px solid #dde1e7',
+    fontSize: '0.95rem', 
+    fontFamily: 'inherit', 
+    resize: 'none', // Boyutlandırmayı kapattık, daha temiz durur
+    outline: 'none',
+    boxSizing: 'border-box',
+    backgroundColor: '#fff',
+    minHeight: '120px'
   },
-  footer: { display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '15px' },
-  cancelBtn: { padding: '10px 20px', backgroundColor: '#ccc', border: 'none', borderRadius: '5px', cursor: 'pointer' },
-  sendBtn: { padding: '10px 20px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }
+  footer: { 
+    display: 'flex', 
+    justifyContent: 'flex-end', 
+    gap: '12px', 
+    marginTop: '10px' 
+  },
+  cancelBtn: { 
+    padding: '10px 20px', 
+    backgroundColor: 'transparent', 
+    border: '1px solid #dee2e6', 
+    borderRadius: '8px', 
+    cursor: 'pointer',
+    color: '#6c757d',
+    fontWeight: '500',
+    fontSize: '0.95rem'
+  },
+  sendBtn: { 
+    padding: '10px 24px', 
+    backgroundColor: '#3498db', // Ana tema rengi
+    color: 'white', 
+    border: 'none', 
+    borderRadius: '8px', 
+    cursor: 'pointer', 
+    fontWeight: '600',
+    fontSize: '0.95rem',
+    boxShadow: '0 4px 6px rgba(52, 152, 219, 0.2)'
+  }
 }
 
 export default MessageModal

@@ -1,161 +1,155 @@
-// client/src/components/Navbar.jsx
-import { Link } from 'react-router-dom'
-import { useContext } from 'react'
-import { AuthContext } from '../context/AuthContext'
+import { useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
+
+// Mantine Bileşenleri
+import { 
+  Container, 
+  Group, 
+  Button, 
+  Text, 
+  Avatar, 
+  Menu, 
+  Indicator, 
+  Box, 
+  rem 
+} from '@mantine/core';
 
 function Navbar() {
-  // Verileri artık direkt LocalStorage'dan değil, Context'ten alıyoruz.
-  // Bu sayede profil resmi değişince burası da anında değişiyor.
-  const { user, logout } = useContext(AuthContext)
+  const { user, logout, unreadCount } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
-    <nav style={styles.navbar}>
-      <div style={styles.container}>
-        
-        {/* LOGO: Admin ise panele, Müşteri ise vitrine gider */}
-        <Link to={user?.role === 'admin' ? "/admin" : "/"} style={styles.brand}>
-           {user?.role === 'admin' ? '🛡️ Yönetim Paneli' : '📦 Kiralama App'}
-        </Link>
+    // Header Kapsayıcısı (Beyaz arka plan, alt çizgi, sticky)
+    <Box 
+      component="header" 
+      style={{ 
+        borderBottom: `1px solid #e9ecef`, 
+        backgroundColor: 'white', 
+        position: 'sticky', 
+        top: 0, 
+        zIndex: 100 
+      }}
+    >
+      <Container size="lg" h={70}>
+        <Group h="100%" justify="space-between">
+          
+          {/* --- 1. LOGO --- */}
+          <Text 
+            component={Link} 
+            to={user?.role === 'admin' ? "/admin" : "/"} 
+            size="xl" 
+            fw={900} 
+            variant="gradient" 
+            gradient={{ from: 'blue', to: 'cyan', deg: 90 }}
+            style={{ textDecoration: 'none' }}
+          >
+             {user?.role === 'admin' ? '🛡️ YÖNETİM' : '📦 PAZARYERİ'}
+          </Text>
 
-        <div style={styles.navLinks}>
-          {user ? (
-            <>
-              {/* --- ADMİN GÖRÜNÜMÜ --- */}
-              {user.role === 'admin' ? (
-                <>
-                  <span style={{color:'#ccc'}}>Hoşgeldin, Admin</span>
-                </>
-              ) : (
-                /* --- MÜŞTERİ GÖRÜNÜMÜ --- */
-                <>
-                  <Link to="/" style={styles.link}>Vitrin</Link>
-                  <Link to="/messages" style={styles.link}>💬 Mesajlar</Link>
-                  <Link to="/add-product" style={styles.addButton}>+ İlan Ver</Link>
-                  
-                  {/* --- PROFİL ALANI (RESİM + İSİM) --- */}
-                  <Link to="/profile" style={styles.profileBadge}>
-                    <img 
-                        src={user.profile_image || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
-                        alt="Profil" 
-                        style={styles.avatar} 
-                    />
-                    <div style={styles.userInfo}>
-                        <span style={styles.username}>{user.username}</span>
-                        <span style={styles.roleTag}>Müşteri</span>
-                    </div>
-                  </Link>
-                  {/* ---------------------------------- */}
-                </>
-              )}
+          {/* --- 2. NAVİGASYON --- */}
+          <Group gap="md">
+            
+            {user ? (
+              <>
+                {/* --- ADMİN GÖRÜNÜMÜ --- */}
+                {user.role === 'admin' ? (
+                  <Text c="dimmed" size="sm" fw={500}>Hoşgeldin, Admin</Text>
+                ) : (
+                  /* --- MÜŞTERİ GÖRÜNÜMÜ --- */
+                  <>
+                    <Button variant="subtle" component={Link} to="/" color="gray">
+                      Vitrin
+                    </Button>
 
-              {/* ÇIKIŞ BUTONU */}
-              <button onClick={logout} style={styles.logoutBtn}>Çıkış</button>
-            </>
-          ) : (
-            /* --- GİRİŞ YAPMAMIŞ KULLANICI --- */
-            <Link to="/login" style={styles.link}>Giriş Yap</Link>
-          )}
-        </div>
-      </div>
-    </nav>
-  )
+                    {/* Mesajlar Butonu ve Bildirim Rozeti */}
+                    <Indicator 
+                      inline 
+                      label={unreadCount} 
+                      size={16} 
+                      color="red" 
+                      disabled={unreadCount === 0} // 0 ise rozeti gizle
+                      offset={4}
+                    >
+                      <Button variant="subtle" component={Link} to="/messages" color="gray">
+                        💬 Mesajlar
+                      </Button>
+                    </Indicator>
+
+                    <Button 
+                      component={Link} 
+                      to="/add-product" 
+                      variant="filled" 
+                      color="green" 
+                      radius="xl"
+                    >
+                      + İlan Ver
+                    </Button>
+                  </>
+                )}
+
+                {/* --- PROFİL MENÜSÜ (DROPDOWN) --- */}
+                <Menu shadow="md" width={200} trigger="hover" openDelay={100} closeDelay={400}>
+                  <Menu.Target>
+                    <Button 
+                        variant="light" 
+                        color="blue" 
+                        pl={5} // Sol padding'i biraz kıstık ki avatar yapışsın
+                        leftSection={
+                            <Avatar 
+                                src={user.profile_image} 
+                                alt={user.username} 
+                                radius="xl" 
+                                size={30} 
+                            />
+                        }
+                    >
+                        {user.username}
+                    </Button>
+                  </Menu.Target>
+
+                  <Menu.Dropdown>
+                    <Menu.Label>Hesap</Menu.Label>
+                    
+                    {user.role !== 'admin' && (
+                        <Menu.Item component={Link} to="/profile">
+                          👤 Profilim
+                        </Menu.Item>
+                    )}
+                    
+                    <Menu.Divider />
+                    
+                    <Menu.Item 
+                      color="red" 
+                      onClick={handleLogout}
+                    >
+                      🚪 Çıkış Yap
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              </>
+            ) : (
+              /* --- GİRİŞ YAPMAMIŞ KULLANICI --- */
+              <Group>
+                <Button variant="default" component={Link} to="/login">
+                  Giriş Yap
+                </Button>
+                <Button component={Link} to="/register">
+                  Kayıt Ol
+                </Button>
+              </Group>
+            )}
+          </Group>
+
+        </Group>
+      </Container>
+    </Box>
+  );
 }
 
-// CSS Stilleri
-const styles = {
-  navbar: {
-    backgroundColor: '#1f2937', // Koyu gri (Modern)
-    color: '#fff',
-    padding: '0.8rem 0', // Biraz incelttik
-    marginBottom: '2rem',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-  },
-  container: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '0 20px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  brand: {
-    color: '#fff',
-    fontSize: '1.5rem',
-    fontWeight: 'bold',
-    textDecoration: 'none',
-    letterSpacing: '1px'
-  },
-  navLinks: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '20px'
-  },
-  link: {
-    color: '#ecf0f1',
-    textDecoration: 'none',
-    fontSize: '1rem',
-    transition: 'color 0.3s',
-    cursor: 'pointer'
-  },
-  addButton: {
-    backgroundColor: '#10b981', // Yeşil
-    color: 'white',
-    padding: '8px 16px',
-    borderRadius: '20px',
-    textDecoration: 'none',
-    fontWeight: 'bold',
-    fontSize: '0.9rem',
-    transition: 'transform 0.2s',
-  },
-  
-  // --- YENİ EKLENEN PROFİL STİLLERİ ---
-  profileBadge: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    textDecoration: 'none',
-    backgroundColor: 'rgba(255,255,255,0.1)', // Hafif transparan arka plan
-    padding: '5px 12px',
-    borderRadius: '30px',
-    transition: 'background 0.3s',
-    border: '1px solid rgba(255,255,255,0.2)'
-  },
-  avatar: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '50%',
-    objectFit: 'cover',
-    border: '2px solid #10b981' // Yeşil çerçeve
-  },
-  userInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    lineHeight: '1.1'
-  },
-  username: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: '0.9rem'
-  },
-  roleTag: {
-    fontSize: '0.7rem',
-    color: '#9ca3af', // Açık gri
-    textTransform: 'uppercase'
-  },
-  // ------------------------------------
-
-  logoutBtn: {
-    backgroundColor: '#ef4444', // Kırmızı
-    color: 'white',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '0.9rem',
-    fontWeight: 'bold',
-    transition: 'background 0.3s',
-    marginLeft: '10px'
-  }
-}
-
-export default Navbar
+export default Navbar;

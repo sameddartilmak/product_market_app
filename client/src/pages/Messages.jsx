@@ -5,16 +5,15 @@ import { toast } from 'react-toastify'
 import { useNavigate } from 'react-router-dom'
 
 function Messages() {
+  // --- MANTIK KISMI (HİÇ DOKUNULMADI - AYNEN KORUNDU) ---
   const navigate = useNavigate()
   
-  // State'ler
-  const [conversations, setConversations] = useState([]) // Sol menüdeki kişiler
-  const [selectedUser, setSelectedUser] = useState(null) // Şu an kimle konuşuyoruz?
-  const [chatHistory, setChatHistory] = useState([])     // Mesaj balonları
-  const [newMessage, setNewMessage] = useState('')       // Yazılan cevap
+  const [conversations, setConversations] = useState([]) 
+  const [selectedUser, setSelectedUser] = useState(null) 
+  const [chatHistory, setChatHistory] = useState([])     
+  const [newMessage, setNewMessage] = useState('')       
   const [loading, setLoading] = useState(true)
 
-  // Otomatik kaydırma için referans
   const messagesEndRef = useRef(null)
 
   const token = localStorage.getItem('token')
@@ -28,12 +27,10 @@ function Messages() {
     fetchConversations()
   }, [])
 
-  // Mesaj atınca veya sohbet değişince en alta kaydır
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [chatHistory])
 
-  // 1. Konuşma Listesini Getir
   const fetchConversations = async () => {
     try {
         const res = await axios.get('http://127.0.0.1:5000/api/messages/conversations', {
@@ -47,7 +44,6 @@ function Messages() {
     }
   }
 
-  // 2. Bir Kişiye Tıklayınca Mesajları Getir
   const selectUser = async (user) => {
     setSelectedUser(user)
     try {
@@ -60,7 +56,6 @@ function Messages() {
     }
   }
 
-  // 3. Cevap Yaz ve Gönder
   const handleSendMessage = async (e) => {
     e.preventDefault()
     if (!newMessage.trim()) return
@@ -73,9 +68,8 @@ function Messages() {
             headers: { Authorization: `Bearer ${token}` }
         })
         
-        // Mesajı listeye ekle (Backend'den tekrar çekmeden hızlıca ekranda gösterelim)
         setChatHistory([...chatHistory, {
-            id: Date.now(), // Geçici ID
+            id: Date.now(), 
             sender_id: currentUserId,
             content: newMessage,
             is_me: true,
@@ -89,123 +83,291 @@ function Messages() {
     }
   }
 
-  if (loading) return <div style={{textAlign:'center', marginTop:'50px'}}>Mesajlar yükleniyor...</div>
+  if (loading) return (
+    <div style={{display:'flex', justifyContent:'center', alignItems:'center', height:'100vh', color:'#6366f1'}}>
+        <h3>Yükleniyor...</h3>
+    </div>
+  )
 
+  // --- YENİ TASARIM (JSX) ---
   return (
-    <div style={styles.container}>
-      
-      {/* SOL TARA: KİŞİ LİSTESİ */}
-      <div style={styles.sidebar}>
-        <h3 style={styles.sidebarHeader}>Mesajlar</h3>
-        <div style={styles.userList}>
-            {conversations.length === 0 ? (
-                <p style={{padding:'20px', color:'#999'}}>Henüz mesajınız yok.</p>
-            ) : (
-                conversations.map(c => (
-                    <div 
-                        key={c.user_id} 
-                        onClick={() => selectUser(c)}
-                        style={{
-                            ...styles.userItem,
-                            backgroundColor: selectedUser?.user_id === c.user_id ? '#e3f2fd' : 'white'
-                        }}
-                    >
-                        <div style={styles.avatar}>{c.username.charAt(0).toUpperCase()}</div>
-                        <div style={{overflow:'hidden'}}>
-                            <div style={{fontWeight:'bold'}}>{c.username}</div>
-                            <div style={styles.lastMsg}>{c.last_message}</div>
-                        </div>
+    <div style={styles.pageWrapper}>
+        <div style={styles.container}>
+        
+        {/* SOL TARA: KİŞİ LİSTESİ (SIDEBAR) */}
+        <div style={styles.sidebar}>
+            <div style={styles.sidebarHeader}>
+                <h3 style={styles.headerTitle}>Gelen Kutusu</h3>
+                <span style={styles.badge}>{conversations.length}</span>
+            </div>
+
+            <div style={styles.userList}>
+                {conversations.length === 0 ? (
+                    <div style={styles.emptySidebar}>
+                        <span style={{fontSize:'2rem'}}>📭</span>
+                        <p>Henüz mesajınız yok.</p>
                     </div>
-                ))
-            )}
-        </div>
-      </div>
-
-      {/* SAĞ TARAF: SOHBET EKRANI */}
-      <div style={styles.chatArea}>
-        {selectedUser ? (
-            <>
-                {/* Sohbet Başlığı */}
-                <div style={styles.chatHeader}>
-                    <h3 style={{margin:0}}>{selectedUser.username}</h3>
-                </div>
-
-                {/* Mesaj Balonları */}
-                <div style={styles.messagesList}>
-                    {chatHistory.map((msg) => (
+                ) : (
+                    conversations.map(c => (
                         <div 
-                            key={msg.id} 
+                            key={c.user_id} 
+                            onClick={() => selectUser(c)}
                             style={{
-                                ...styles.messageRow,
-                                justifyContent: msg.is_me ? 'flex-end' : 'flex-start'
+                                ...styles.userItem,
+                                backgroundColor: selectedUser?.user_id === c.user_id ? '#f3f4f6' : 'transparent',
+                                borderRight: selectedUser?.user_id === c.user_id ? '4px solid #4f46e5' : '4px solid transparent'
                             }}
                         >
-                            <div style={{
-                                ...styles.bubble,
-                                backgroundColor: msg.is_me ? '#3498db' : '#ecf0f1',
-                                color: msg.is_me ? 'white' : 'black',
-                                borderBottomRightRadius: msg.is_me ? '0' : '10px',
-                                borderBottomLeftRadius: msg.is_me ? '10px' : '0'
-                            }}>
-                                <div>{msg.content}</div>
-                                <div style={{
-                                    fontSize:'0.7rem', 
-                                    textAlign:'right', 
-                                    marginTop:'5px', 
-                                    opacity:0.8
-                                }}>{msg.date}</div>
+                            <div style={styles.avatar}>
+                                {c.username.charAt(0).toUpperCase()}
+                            </div>
+                            <div style={styles.userInfo}>
+                                <div style={styles.userName}>{c.username}</div>
+                                <div style={styles.lastMsg}>{c.last_message}</div>
                             </div>
                         </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                </div>
-
-                {/* Mesaj Yazma Kutusu */}
-                <form onSubmit={handleSendMessage} style={styles.inputArea}>
-                    <input 
-                        type="text" 
-                        placeholder="Bir mesaj yazın..." 
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        style={styles.input}
-                    />
-                    <button type="submit" style={styles.sendBtn}>➤</button>
-                </form>
-            </>
-        ) : (
-            <div style={styles.emptyState}>
-                <h3>💬 Sohbet Seçin</h3>
-                <p>Mesajlaşmak için soldan bir kişi seçin.</p>
+                    ))
+                )}
             </div>
-        )}
-      </div>
+        </div>
 
+        {/* SAĞ TARAF: SOHBET EKRANI */}
+        <div style={styles.chatArea}>
+            {selectedUser ? (
+                <>
+                    {/* Sohbet Başlığı */}
+                    <div style={styles.chatHeader}>
+                        <div style={styles.headerAvatar}>
+                            {selectedUser.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <h3 style={styles.chatUserName}>{selectedUser.username}</h3>
+                            <span style={styles.statusText}>Çevrimiçi</span>
+                        </div>
+                    </div>
+
+                    {/* Mesaj Balonları */}
+                    <div style={styles.messagesList}>
+                        {chatHistory.map((msg) => (
+                            <div 
+                                key={msg.id} 
+                                style={{
+                                    ...styles.messageRow,
+                                    justifyContent: msg.is_me ? 'flex-end' : 'flex-start'
+                                }}
+                            >
+                                <div style={{
+                                    ...styles.bubble,
+                                    backgroundColor: msg.is_me ? '#4f46e5' : 'white',
+                                    color: msg.is_me ? 'white' : '#1f2937',
+                                    borderRadius: msg.is_me ? '18px 18px 0 18px' : '18px 18px 18px 0',
+                                    boxShadow: msg.is_me ? '0 4px 6px rgba(79, 70, 229, 0.2)' : '0 2px 4px rgba(0,0,0,0.05)'
+                                }}>
+                                    <div style={styles.msgContent}>{msg.content}</div>
+                                    <div style={{
+                                        ...styles.msgDate,
+                                        color: msg.is_me ? 'rgba(255,255,255,0.7)' : '#9ca3af'
+                                    }}>
+                                        {msg.date}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </div>
+
+                    {/* Mesaj Yazma Kutusu */}
+                    <form onSubmit={handleSendMessage} style={styles.inputArea}>
+                        <input 
+                            type="text" 
+                            placeholder="Bir mesaj yazın..." 
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            style={styles.input}
+                        />
+                        <button type="submit" style={styles.sendBtn}>
+                            <span style={{fontSize:'1.2rem', marginLeft:'2px'}}>➤</span>
+                        </button>
+                    </form>
+                </>
+            ) : (
+                <div style={styles.emptyState}>
+                    <div style={styles.emptyIcon}>💬</div>
+                    <h3 style={{color:'#374151'}}>Sohbet Başlatın</h3>
+                    <p style={{color:'#6b7280'}}>Mesajlaşmak için soldaki listeden bir kişi seçin.</p>
+                </div>
+            )}
+        </div>
+
+        </div>
     </div>
   )
 }
 
+// --- YENİ MODERN STYLES ---
 const styles = {
-  container: { display: 'flex', height: '600px', backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', overflow: 'hidden', margin: '40px auto', maxWidth: '1000px' },
+  pageWrapper: {
+    minHeight: '100vh',
+    backgroundColor: '#f9fafb', // Sayfa arka planı
+    display: 'flex',
+    justifyContent: 'center',
+    padding: '40px 20px',
+    fontFamily: '"Segoe UI", sans-serif'
+  },
+  container: { 
+    display: 'flex', 
+    width: '100%',
+    maxWidth: '1100px', 
+    height: '75vh', // Ekranın %75'i kadar yükseklik
+    backgroundColor: 'white', 
+    borderRadius: '24px', 
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.1)', 
+    overflow: 'hidden',
+    border: '1px solid #e5e7eb'
+  },
   
-  sidebar: { width: '300px', borderRight: '1px solid #eee', display: 'flex', flexDirection: 'column' },
-  sidebarHeader: { padding: '20px', borderBottom: '1px solid #eee', margin: 0, backgroundColor: '#f8f9fa' },
-  userList: { overflowY: 'auto', flex: 1 },
-  userItem: { display: 'flex', alignItems: 'center', gap: '10px', padding: '15px', cursor: 'pointer', borderBottom: '1px solid #f1f1f1', transition: 'background 0.2s' },
-  avatar: { width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#34495e', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' },
-  lastMsg: { fontSize: '0.85rem', color: '#888', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' },
+  // SOL TARA (SIDEBAR)
+  sidebar: { 
+    width: '320px', 
+    borderRight: '1px solid #e5e7eb', 
+    display: 'flex', 
+    flexDirection: 'column',
+    backgroundColor: 'white'
+  },
+  sidebarHeader: { 
+    padding: '25px 20px', 
+    borderBottom: '1px solid #e5e7eb', 
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  headerTitle: { margin: 0, fontSize: '1.2rem', fontWeight: '800', color: '#111827' },
+  badge: { backgroundColor: '#e0e7ff', color: '#4338ca', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' },
   
-  chatArea: { flex: 1, display: 'flex', flexDirection: 'column' },
-  chatHeader: { padding: '15px 20px', borderBottom: '1px solid #eee', backgroundColor: '#fff', fontWeight: 'bold' },
-  messagesList: { flex: 1, padding: '20px', overflowY: 'auto', backgroundColor: '#f5f7f9', display: 'flex', flexDirection: 'column', gap: '10px' },
+  userList: { overflowY: 'auto', flex: 1, padding: '10px' },
+  emptySidebar: { textAlign: 'center', marginTop: '50px', color: '#9ca3af' },
+  
+  userItem: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '12px', 
+    padding: '12px 15px', 
+    cursor: 'pointer', 
+    borderRadius: '12px', 
+    marginBottom: '5px',
+    transition: 'all 0.2s ease'
+  },
+  avatar: { 
+    width: '45px', 
+    height: '45px', 
+    borderRadius: '50%', 
+    backgroundColor: '#e5e7eb', 
+    color: '#4b5563', 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    fontWeight: 'bold',
+    fontSize: '1.1rem',
+    flexShrink: 0
+  },
+  userInfo: { overflow: 'hidden', display:'flex', flexDirection:'column', justifyContent:'center' },
+  userName: { fontWeight: '600', color: '#1f2937', fontSize: '0.95rem' },
+  lastMsg: { fontSize: '0.8rem', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' },
+  
+  // SAĞ TARAF (CHAT AREA)
+  chatArea: { flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#fdfdfd' },
+  
+  chatHeader: { 
+    padding: '15px 25px', 
+    borderBottom: '1px solid #f3f4f6', 
+    backgroundColor: 'white', 
+    display: 'flex',
+    alignItems: 'center',
+    gap: '15px',
+    boxShadow: '0 4px 6px -4px rgba(0,0,0,0.05)',
+    zIndex: 10
+  },
+  headerAvatar: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '50%',
+    backgroundColor: '#4f46e5', // İndigo
+    color: 'white',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 'bold'
+  },
+  chatUserName: { margin: 0, fontSize: '1.1rem', color: '#111827' },
+  statusText: { fontSize: '0.8rem', color: '#10b981', fontWeight: '500' },
+
+  messagesList: { 
+    flex: 1, 
+    padding: '30px', 
+    overflowY: 'auto', 
+    backgroundColor: '#f9fafb', // Hafif gri arka plan (Sohbet alanı)
+    display: 'flex', 
+    flexDirection: 'column', 
+    gap: '15px',
+    backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)', // İnce nokta deseni
+    backgroundSize: '20px 20px'
+  },
   
   messageRow: { display: 'flex', width: '100%' },
-  bubble: { maxWidth: '70%', padding: '10px 15px', borderRadius: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.1)', wordWrap: 'break-word' },
+  bubble: { 
+    maxWidth: '65%', 
+    padding: '12px 18px', 
+    position: 'relative',
+    fontSize: '0.95rem',
+    lineHeight: '1.5'
+  },
+  msgContent: { wordWrap: 'break-word' },
+  msgDate: { fontSize:'0.7rem', textAlign:'right', marginTop:'6px', fontWeight: '500' },
   
-  inputArea: { padding: '15px', borderTop: '1px solid #eee', display: 'flex', gap: '10px', backgroundColor: 'white' },
-  input: { flex: 1, padding: '10px', borderRadius: '20px', border: '1px solid #ddd', outline: 'none' },
-  sendBtn: { backgroundColor: '#3498db', color: 'white', border: 'none', width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.2rem' },
+  // Input Alanı
+  inputArea: { 
+    padding: '20px', 
+    borderTop: '1px solid #e5e7eb', 
+    display: 'flex', 
+    gap: '12px', 
+    backgroundColor: 'white',
+    alignItems: 'center'
+  },
+  input: { 
+    flex: 1, 
+    padding: '14px 20px', 
+    borderRadius: '24px', 
+    border: '1px solid #e5e7eb', 
+    outline: 'none', 
+    backgroundColor: '#f9fafb',
+    fontSize: '1rem',
+    transition: 'border-color 0.2s',
+    color: '#374151'
+  },
+  sendBtn: { 
+    backgroundColor: '#4f46e5', 
+    color: 'white', 
+    border: 'none', 
+    width: '48px', 
+    height: '48px', 
+    borderRadius: '50%', 
+    cursor: 'pointer', 
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 6px rgba(79, 70, 229, 0.3)',
+    transition: 'transform 0.1s'
+  },
   
-  emptyState: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#999' }
+  emptyState: { 
+    flex: 1, 
+    display: 'flex', 
+    flexDirection: 'column', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    backgroundColor: '#f9fafb'
+  },
+  emptyIcon: { fontSize: '4rem', marginBottom: '20px', opacity: 0.5 }
 }
 
 export default Messages

@@ -8,6 +8,7 @@ import { AuthContext } from '../context/AuthContext'
 import Swal from 'sweetalert2'
 
 function ProductDetail() {
+  // --- MANTIK KISMI (AYNEN KORUNDU) ---
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useContext(AuthContext)
@@ -38,16 +39,12 @@ function ProductDetail() {
     fetchProduct()
   }, [id])
 
-  // --- KİRALAMA HESAPLAMASI (Tarihler değiştikçe çalışır) ---
+  // --- KİRALAMA HESAPLAMASI ---
   useEffect(() => {
     if (startDate && endDate && product) {
         const start = new Date(startDate)
         const end = new Date(endDate)
-        
-        // Gün farkını bul (Milisaniye cinsinden)
         const diffTime = end - start
-        
-        // Milisaniyeyi güne çevir
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
         if (diffDays > 0) {
@@ -63,7 +60,6 @@ function ProductDetail() {
   // --- SATIN ALMA İŞLEMİ ---
   const handleBuy = async () => {
     if (!user) {
-        // Giriş yapmamışsa şık bir uyarı verelim
         Swal.fire({
             icon: 'warning',
             title: 'Giriş Yapmalısınız',
@@ -76,37 +72,25 @@ function ProductDetail() {
         return
     }
 
-    // 1. Şık Onay Penceresi
     const result = await Swal.fire({
         title: 'Satın Almak İstiyor musunuz?',
         text: `Bu ürün için hesabınızdan ${product.price} TL tahsil edilecektir.`,
         icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#27ae60', // Yeşil
-        cancelButtonColor: '#95a5a6',  // Gri
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#9ca3af',
         confirmButtonText: 'Evet, Satın Al!',
-        cancelButtonText: 'Vazgeç',
-        background: '#fff',
-        backdrop: `
-            rgba(0,0,123,0.4)
-            left top
-            no-repeat
-        `
+        cancelButtonText: 'Vazgeç'
     })
 
-    if (!result.isConfirmed) return // Kullanıcı vazgeçti
+    if (!result.isConfirmed) return
 
     try {
         const token = localStorage.getItem('token')
-        
-        // Yükleniyor animasyonu aç
         Swal.fire({
             title: 'İşlem Yapılıyor...',
-            html: 'Ödeme onayı alınıyor, lütfen bekleyin.',
             allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading()
-            }
+            didOpen: () => { Swal.showLoading() }
         })
 
         await axios.post('http://127.0.0.1:5000/api/transactions/buy', 
@@ -114,31 +98,26 @@ function ProductDetail() {
             { headers: { Authorization: `Bearer ${token}` } }
         )
         
-        // 2. Başarılı Mesajı (Konfetili vb. yapılabilir ama şimdilik şık bir modal)
         Swal.fire({
             icon: 'success',
             title: 'Hayırlı Olsun! 🎉',
             text: 'Satın alma işlemi başarıyla gerçekleşti.',
-            confirmButtonColor: '#27ae60',
-            confirmButtonText: 'Tamam'
+            confirmButtonColor: '#10b981'
         })
 
         fetchProduct()
 
     } catch (error) {
-        // Hata Mesajı
         Swal.fire({
             icon: 'error',
             title: 'Bir Sorun Oluştu',
             text: error.response?.data?.message || "Satın alma işlemi başarısız.",
-            confirmButtonColor: '#e74c3c'
+            confirmButtonColor: '#ef4444'
         })
     }
   }
 
-  // ============================================================
-  // 🔥 YENİ TASARIMSAL KİRALAMA FONKSİYONU
-  // ============================================================
+  // --- KİRALAMA FONKSİYONU ---
   const handleRent = async () => {
     if (!user) {
         Swal.fire({
@@ -152,7 +131,6 @@ function ProductDetail() {
     }
     
     if (!startDate || !endDate) {
-        // Küçük bir toast uyarısı (Sağ üstte çıkan)
         const Toast = Swal.mixin({
             toast: true,
             position: 'top-end',
@@ -169,7 +147,6 @@ function ProductDetail() {
         return
     }
 
-    // 1. Şık Onay Penceresi (Özet Bilgiyle)
     const result = await Swal.fire({
         title: 'Kiralama Onayı',
         html: `
@@ -178,13 +155,13 @@ function ProductDetail() {
                 <p><strong>Süre:</strong> ${rentDays} Gün</p>
                 <p><strong>Tarihler:</strong> ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}</p>
                 <hr>
-                <h3 style="color: #f39c12; text-align:center">Toplam: ${rentTotal} TL</h3>
+                <h3 style="color: #f59e0b; text-align:center">Toplam: ${rentTotal} TL</h3>
             </div>
         `,
         icon: 'info',
         showCancelButton: true,
-        confirmButtonColor: '#f39c12', // Turuncu
-        cancelButtonColor: '#95a5a6',
+        confirmButtonColor: '#f59e0b',
+        cancelButtonColor: '#9ca3af',
         confirmButtonText: 'Onayla ve Kirala',
         cancelButtonText: 'Vazgeç'
     })
@@ -193,7 +170,6 @@ function ProductDetail() {
 
     try {
         const token = localStorage.getItem('token')
-        
         Swal.fire({ title: 'İşleniyor...', didOpen: () => Swal.showLoading() })
 
         const payload = {
@@ -211,7 +187,7 @@ function ProductDetail() {
             icon: 'success',
             title: 'Talebiniz Alındı! 📝',
             text: 'Kiralama talebiniz başarıyla oluşturuldu.',
-            confirmButtonColor: '#27ae60'
+            confirmButtonColor: '#10b981'
         })
         
         setStartDate('')
@@ -222,7 +198,7 @@ function ProductDetail() {
             icon: 'error',
             title: 'Hata',
             text: error.response?.data?.message || "Kiralama başarısız.",
-            confirmButtonColor: '#e74c3c'
+            confirmButtonColor: '#ef4444'
         })
     }
   }
@@ -232,205 +208,230 @@ function ProductDetail() {
   const prevSlide = () => { if (!product?.images) return; setCurrentImageIndex((prev) => (prev === 0 ? product.images.length - 1 : prev - 1)) }
   const selectImage = (index) => { setCurrentImageIndex(index) }
 
-  if (loading) return <div style={{textAlign:'center', marginTop:'50px'}}>Yükleniyor...</div>
-  if (!product) return <div style={{textAlign:'center', marginTop:'50px'}}>Ürün bulunamadı.</div>
+  if (loading) return <div style={styles.loadingContainer}>Yükleniyor...</div>
+  if (!product) return <div style={styles.loadingContainer}>Ürün bulunamadı.</div>
 
   const isOwner = user && product.owner && user.id === product.owner.id
   const isSold = product.status === 'sold'
-  const isRent = product.listing_type === 'rent' // Ürün kiralık mı?
+  const isRent = product.listing_type === 'rent'
 
+  // --- YENİ TASARIM (JSX) ---
   return (
-    <div style={styles.pageWrapper}>
-      
-      <h1 style={styles.mainTitle}>
-        {product.title} 
-        {isSold && <span style={styles.soldBadgeTitle}> (SATILDI)</span>}
-        {/* Kiralıksa başlıkta belirtelim */}
-        {!isSold && isRent && <span style={styles.rentBadgeTitle}> (KİRALIK)</span>}
-      </h1>
-
-      <div style={styles.container}>
+    <div style={styles.pageBackground}>
+      <div style={styles.pageContainer}>
         
-        {/* SOL: RESİM GALERİSİ */}
-        <div style={styles.imageSection}>
-          {product.images && product.images.length > 0 ? (
-            <>
-              <div style={styles.sliderContainer}>
-                  {product.images.length > 1 && <button onClick={prevSlide} style={styles.arrowLeft}>❮</button>}
-                  <img 
-                      src={product.images[currentImageIndex]} 
-                      alt={product.title} 
-                      style={{ ...styles.mainImage, filter: isSold ? 'grayscale(100%)' : 'none' }} 
-                  />
-                  {product.images.length > 1 && <button onClick={nextSlide} style={styles.arrowRight}>❯</button>}
-                  {isSold && <div style={styles.soldOverlay}>SATILDI</div>}
-              </div>
-              {product.images.length > 1 && (
-                  <div style={styles.thumbnailContainer}>
-                      {product.images.map((img, index) => (
-                          <img key={index} src={img} alt={`thumb-${index}`} onClick={() => selectImage(index)}
-                              style={{ ...styles.thumbnail, border: currentImageIndex === index ? '2px solid #3498db' : '2px solid transparent', opacity: currentImageIndex === index ? 1 : 0.6 }} 
-                          />
-                      ))}
-                  </div>
-              )}
-            </>
-          ) : ( <div style={styles.placeholder}>Resim Yok</div> )}
+        {/* Üst Kısım: Breadcrumb & Kategori */}
+        <div style={styles.topBar}>
+            <span style={styles.categoryBadge}>{product.category}</span>
+            <span style={styles.dateBadge}>📅 {new Date(product.created_at).toLocaleDateString('tr-TR')}</span>
         </div>
 
-        {/* SAĞ: BİLGİLER */}
-        <div style={styles.infoSection}>
-          
-          <p style={styles.price}>
-            {product.price} TL 
-            {isRent && <span style={{fontSize:'1rem', color:'#666', fontWeight:'normal'}}> / Günlük</span>}
-          </p>
-          
-          <div style={styles.meta}>
-              <span>📂 Kategori: <strong>{product.category}</strong></span>
-              <span>🏷️ Tip: <strong>{isRent ? 'Kiralık' : 'Satılık'}</strong></span>
-              <span>👤 İlan Sahibi: <strong>{product.owner ? product.owner.username : 'Bilinmiyor'}</strong></span>
-              <span>📅 İlan Tarihi: {new Date(product.created_at).toLocaleDateString('tr-TR')}</span>
-          </div>
+        <div style={styles.mainGrid}>
+            
+            {/* SOL KOLON: GÖRSELLER */}
+            <div style={styles.imageColumn}>
+                <div style={styles.mainImageWrapper}>
+                    {isSold && <div style={styles.soldOverlay}>SATILDI</div>}
+                    
+                    {product.images && product.images.length > 0 ? (
+                        <>
+                            {product.images.length > 1 && <button onClick={prevSlide} style={styles.navBtnLeft}>❮</button>}
+                            <img 
+                                src={product.images[currentImageIndex]} 
+                                alt={product.title} 
+                                style={{ ...styles.mainImage, filter: isSold ? 'grayscale(100%)' : 'none' }} 
+                            />
+                            {product.images.length > 1 && <button onClick={nextSlide} style={styles.navBtnRight}>❯</button>}
+                        </>
+                    ) : (
+                        <div style={styles.placeholder}>Görsel Yok</div>
+                    )}
+                </div>
 
-          <hr style={{margin:'20px 0', border:'0', borderTop:'1px solid #eee'}}/>
+                {/* Küçük Resimler */}
+                {product.images && product.images.length > 1 && (
+                    <div style={styles.thumbnailRow}>
+                        {product.images.map((img, index) => (
+                            <img 
+                                key={index} 
+                                src={img} 
+                                onClick={() => selectImage(index)}
+                                style={{
+                                    ...styles.thumbnail,
+                                    borderColor: currentImageIndex === index ? '#4f46e5' : 'transparent',
+                                    opacity: currentImageIndex === index ? 1 : 0.6
+                                }} 
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
 
-          <h3>Açıklama</h3>
-          <p style={styles.description}>{product.description || 'Açıklama girilmemiş.'}</p>
+            {/* SAĞ KOLON: BİLGİ VE AKSİYON */}
+            <div style={styles.infoColumn}>
+                <h1 style={styles.productTitle}>{product.title}</h1>
+                
+                <div style={styles.ownerInfo}>
+                    <span style={styles.ownerAvatar}>👤</span>
+                    <span>Satıcı: <strong>{product.owner ? product.owner.username : 'Bilinmiyor'}</strong></span>
+                </div>
 
-          <div style={styles.actionArea}>
-              
-              {/* DURUM 1: Ürün Satılmış */}
-              {isSold && <button style={styles.disabledButton} disabled>❌ Bu Ürün Artık Mevcut Değil</button>}
+                <div style={styles.priceTag}>
+                    {product.price} <span style={{fontSize:'1.2rem'}}>TL</span>
+                    {isRent && <span style={styles.perDayText}>/ gün</span>}
+                </div>
 
-              {/* DURUM 2: Kendi Ürünün */}
-              {!isSold && isOwner && <button style={styles.disabledButton} disabled>✏️ Bu Sizin İlanınız</button>}
+                <div style={styles.divider}></div>
 
-              {/* DURUM 3: İşlem Yapılabilir (Yabancı) */}
-              {!isSold && !isOwner && (
-                  <div>
-                      {/* --- KİRALAMA ALANI --- */}
-                      {isRent ? (
-                          <div style={styles.rentContainer}>
-                              <h4 style={{marginBottom:'15px', color:'#2c3e50'}}>📅 Kiralama Tarihleri</h4>
-                              
-                              <div style={styles.dateGroup}>
-                                  <div>
-                                      <label style={styles.label}>Başlangıç:</label>
-                                      <input 
-                                          type="date" 
-                                          value={startDate} 
-                                          onChange={(e) => setStartDate(e.target.value)}
-                                          min={new Date().toISOString().split('T')[0]} // Bugünden öncesini seçeme
-                                          style={styles.dateInput}
-                                      />
-                                  </div>
-                                  <div>
-                                      <label style={styles.label}>Bitiş:</label>
-                                      <input 
-                                          type="date" 
-                                          value={endDate} 
-                                          onChange={(e) => setEndDate(e.target.value)}
-                                          min={startDate || new Date().toISOString().split('T')[0]}
-                                          style={styles.dateInput}
-                                      />
-                                  </div>
-                              </div>
+                <div style={styles.descriptionBox}>
+                    <h3 style={styles.sectionTitle}>Ürün Açıklaması</h3>
+                    <p style={styles.descriptionText}>{product.description || 'Açıklama girilmemiş.'}</p>
+                </div>
 
-                              {/* Hesaplama Özeti */}
-                              {rentDays > 0 && (
-                                  <div style={styles.summaryBox}>
-                                      <div style={{display:'flex', justifyContent:'space-between'}}>
-                                          <span>Gün Sayısı:</span>
-                                          <strong>{rentDays} Gün</strong>
-                                      </div>
-                                      <div style={{display:'flex', justifyContent:'space-between', marginTop:'5px'}}>
-                                          <span>Toplam Tutar:</span>
-                                          <strong style={{color:'#27ae60', fontSize:'1.2rem'}}>{rentTotal} TL</strong>
-                                      </div>
-                                  </div>
-                              )}
+                {/* AKSİYON KARTI (SATIN AL / KİRALA) */}
+                <div style={styles.actionCard}>
+                    
+                    {/* Durum: SATILDI */}
+                    {isSold && (
+                        <div style={styles.alertBoxRed}>Bu ürün satılmıştır. İşlem yapılamaz.</div>
+                    )}
 
-                              <div style={styles.buttonGroup}>
-                                  <button onClick={handleRent} style={styles.rentButton}>
-                                      🤝 Kirala
-                                  </button>
-                                  <button onClick={() => setIsModalOpen(true)} style={styles.messageButton}>
-                                      💬 Mesaj At
-                                  </button>
-                              </div>
-                          </div>
-                      ) : (
-                          // --- SATIN ALMA ALANI (Satılık Ürünler İçin) ---
-                          <div style={styles.buttonGroup}>
-                              <button onClick={handleBuy} style={styles.buyButton}>
-                                  💳 Satın Al
-                              </button>
-                              <button onClick={() => setIsModalOpen(true)} style={styles.messageButton}>
-                                  💬 Satıcıya Mesaj At
-                              </button>
-                          </div>
-                      )}
-                  </div>
-              )}
-          </div>
+                    {/* Durum: KENDİ İLANIN */}
+                    {!isSold && isOwner && (
+                        <div style={styles.alertBoxGray}>Bu kendi ilanınızdır.</div>
+                    )}
+
+                    {/* Durum: İŞLEM YAPILABİLİR (YABANCI) */}
+                    {!isSold && !isOwner && (
+                        <>
+                            {isRent ? (
+                                // --- KİRALAMA FORMU ---
+                                <div style={styles.rentForm}>
+                                    <h4 style={styles.actionTitle}>Kiralama Tarihleri</h4>
+                                    <div style={styles.dateInputs}>
+                                        <div style={{flex:1}}>
+                                            <label style={styles.inputLabel}>Başlangıç</label>
+                                            <input 
+                                                type="date" 
+                                                value={startDate} 
+                                                onChange={(e) => setStartDate(e.target.value)}
+                                                min={new Date().toISOString().split('T')[0]}
+                                                style={styles.input}
+                                            />
+                                        </div>
+                                        <div style={{flex:1}}>
+                                            <label style={styles.inputLabel}>Bitiş</label>
+                                            <input 
+                                                type="date" 
+                                                value={endDate} 
+                                                onChange={(e) => setEndDate(e.target.value)}
+                                                min={startDate || new Date().toISOString().split('T')[0]}
+                                                style={styles.input}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {rentDays > 0 && (
+                                        <div style={styles.rentSummary}>
+                                            <span>Toplam ({rentDays} Gün):</span>
+                                            <span style={styles.rentTotal}>{rentTotal} TL</span>
+                                        </div>
+                                    )}
+
+                                    <button onClick={handleRent} style={styles.btnPrimaryOrange}>
+                                        Hemen Kirala
+                                    </button>
+                                </div>
+                            ) : (
+                                // --- SATIN ALMA BUTONU ---
+                                <button onClick={handleBuy} style={styles.btnPrimaryGreen}>
+                                    Güvenle Satın Al
+                                </button>
+                            )}
+
+                            <button onClick={() => setIsModalOpen(true)} style={styles.btnSecondary}>
+                                💬 Satıcıya Mesaj At
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
         </div>
+
+        {isModalOpen && product.owner && (
+            <MessageModal 
+                isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} 
+                receiverId={product.owner.id} receiverName={product.owner.username} productId={product.id}
+            />
+        )}
       </div>
-
-      {isModalOpen && product.owner && (
-        <MessageModal 
-            isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} 
-            receiverId={product.owner.id} receiverName={product.owner.username} productId={product.id}
-        />
-      )}
     </div>
   )
 }
 
-// --- STYLES ---
+// --- YENİ STİLLER (CSS Object) ---
 const styles = {
-  pageWrapper: { maxWidth: '1100px', margin: '40px auto', padding: '0 20px' },
-  mainTitle: { fontSize: '1.5rem', color: '#2c3e50', marginBottom: '20px', lineHeight: '1.2', overflowWrap: 'break-word' },
-  soldBadgeTitle: { color: '#e74c3c', fontWeight: 'bold', fontSize: '1rem' },
-  rentBadgeTitle: { color: '#f39c12', fontWeight: 'bold', fontSize: '1rem' }, // Turuncu Kiralık yazısı
+  loadingContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#6366f1', fontSize: '1.2rem' },
   
-  container: { display: 'flex', flexWrap: 'wrap', gap: '40px', backgroundColor: 'white', borderRadius: '12px', padding: '30px', boxShadow: '0 5px 20px rgba(0,0,0,0.08)' },
+  pageBackground: { minHeight: '100vh', backgroundColor: '#f9fafb', padding: '40px 20px', fontFamily: '"Segoe UI", sans-serif' },
+  pageContainer: { maxWidth: '1100px', margin: '0 auto' },
   
-  imageSection: { flex: 1.2, minWidth: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center' },
-  sliderContainer: { position: 'relative', width: '100%', height: '400px', backgroundColor: '#f8f9fa', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '1px solid #eee' },
-  mainImage: { maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', transition: 'filter 0.3s' },
-  soldOverlay: { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)', backgroundColor: 'rgba(231, 76, 60, 0.9)', color: 'white', padding: '10px 40px', fontSize: '2rem', fontWeight: 'bold', border: '4px solid white', borderRadius: '10px', zIndex: 5 },
-  arrowLeft: { position: 'absolute', left: '10px', backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  arrowRight: { position: 'absolute', right: '10px', backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  thumbnailContainer: { display: 'flex', gap: '10px', marginTop: '15px', overflowX: 'auto', width: '100%', paddingBottom: '5px' },
-  thumbnail: { width: '70px', height: '70px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s' },
-  placeholder: { width: '100%', height: '300px', backgroundColor: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', borderRadius: '10px' },
+  topBar: { display: 'flex', justifyContent: 'space-between', marginBottom: '20px' },
+  categoryBadge: { backgroundColor: '#e0e7ff', color: '#4338ca', padding: '6px 12px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: '600', textTransform: 'uppercase' },
+  dateBadge: { color: '#6b7280', fontSize: '0.9rem' },
 
-  infoSection: { flex: 1, minWidth: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' },
-  price: { fontSize: '2rem', color: '#27ae60', fontWeight: 'bold', margin: '0 0 20px 0' },
-  meta: { display: 'flex', flexDirection: 'column', gap: '10px', color: '#555', fontSize: '1.05rem' },
-  description: { lineHeight: '1.6', color: '#666', fontSize: '1.05rem', whiteSpace: 'pre-wrap' },
-  
-  actionArea: { marginTop: '30px' },
-  buttonGroup: { display: 'flex', gap: '15px', flexWrap: 'wrap', marginTop:'15px' },
-  
-  // Satın Al Butonu (Yeşil)
-  buyButton: { flex: 1, padding: '15px 20px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.3s', minWidth: '150px' },
-  
-  // Kirala Butonu (Turuncu)
-  rentButton: { flex: 1, padding: '15px 20px', backgroundColor: '#f39c12', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.3s', minWidth: '150px' },
-  
-  // Mesaj Butonu (Mavi)
-  messageButton: { flex: 1, padding: '15px 20px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.3s', minWidth: '150px' },
-  
-  disabledButton: { padding: '15px 30px', backgroundColor: '#95a5a6', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', width: '100%', cursor: 'not-allowed' },
+  mainGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '40px' },
 
-  // --- Kiralama Özel Stilleri ---
-  rentContainer: { backgroundColor: '#fcfcfc', padding: '20px', borderRadius: '10px', border: '1px solid #eee' },
-  dateGroup: { display: 'flex', gap: '20px', flexWrap: 'wrap' },
-  label: { display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#555' },
-  dateInput: { padding: '10px', borderRadius: '5px', border: '1px solid #ccc', width: '100%' },
-  summaryBox: { marginTop: '15px', padding: '15px', backgroundColor: '#e8f6f3', borderRadius: '8px', borderLeft: '4px solid #27ae60' }
+  // Sol Kolon
+  imageColumn: { display: 'flex', flexDirection: 'column', gap: '15px' },
+  mainImageWrapper: { position: 'relative', width: '100%', height: '450px', backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' },
+  mainImage: { maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' },
+  placeholder: { color: '#9ca3af' },
+  
+  soldOverlay: { position: 'absolute', backgroundColor: 'rgba(31, 41, 55, 0.85)', color: 'white', padding: '10px 30px', borderRadius: '8px', fontSize: '1.5rem', fontWeight: 'bold', zIndex: 10, backdropFilter: 'blur(4px)' },
+  
+  navBtnLeft: { position: 'absolute', left: '10px', backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 5 },
+  navBtnRight: { position: 'absolute', right: '10px', backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 5 },
+
+  thumbnailRow: { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '5px' },
+  thumbnail: { width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover', border: '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s' },
+
+  // Sağ Kolon
+  infoColumn: { display: 'flex', flexDirection: 'column' },
+  productTitle: { fontSize: '2.2rem', fontWeight: '800', color: '#111827', lineHeight: '1.2', marginBottom: '10px' },
+  
+  ownerInfo: { display: 'flex', alignItems: 'center', gap: '10px', color: '#4b5563', marginBottom: '20px' },
+  ownerAvatar: { fontSize: '1.2rem' },
+
+  priceTag: { fontSize: '2.5rem', fontWeight: '700', color: '#111827', marginBottom: '20px', letterSpacing: '-1px' },
+  perDayText: { fontSize: '1rem', color: '#6b7280', fontWeight: '400' },
+
+  divider: { height: '1px', backgroundColor: '#e5e7eb', margin: '10px 0 25px 0' },
+
+  descriptionBox: { marginBottom: '30px' },
+  sectionTitle: { fontSize: '1.1rem', fontWeight: '700', color: '#374151', marginBottom: '10px' },
+  descriptionText: { color: '#4b5563', lineHeight: '1.6', whiteSpace: 'pre-wrap' },
+
+  // Aksiyon Kartı
+  actionCard: { backgroundColor: 'white', padding: '25px', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)' },
+  actionTitle: { margin: '0 0 15px 0', fontSize: '1.1rem', color: '#374151' },
+  
+  rentForm: { display: 'flex', flexDirection: 'column', gap: '15px' },
+  dateInputs: { display: 'flex', gap: '15px' },
+  inputLabel: { display: 'block', fontSize: '0.85rem', color: '#6b7280', marginBottom: '5px', fontWeight: '600' },
+  input: { width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', outline: 'none', fontSize: '0.95rem' },
+
+  rentSummary: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff7ed', padding: '15px', borderRadius: '8px', border: '1px solid #ffedd5' },
+  rentTotal: { fontWeight: 'bold', fontSize: '1.2rem', color: '#c2410c' },
+
+  // Butonlar
+  btnPrimaryGreen: { width: '100%', padding: '14px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '10px', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '10px' },
+  btnPrimaryOrange: { width: '100%', padding: '14px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '10px', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' },
+  btnSecondary: { width: '100%', padding: '14px', backgroundColor: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '10px', fontSize: '1rem', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s', marginTop: '10px' },
+
+  // Uyarı Kutuları
+  alertBoxRed: { backgroundColor: '#fef2f2', color: '#b91c1c', padding: '15px', borderRadius: '8px', textAlign: 'center', fontWeight: '600' },
+  alertBoxGray: { backgroundColor: '#f3f4f6', color: '#4b5563', padding: '15px', borderRadius: '8px', textAlign: 'center', fontWeight: '600' }
 }
 
 export default ProductDetail

@@ -1,5 +1,7 @@
 {
   "dependencies": {
+    "@mantine/core": "^8.3.10",
+    "@mantine/hooks": "^8.3.10",
     "sweetalert2": "^11.26.10"
   }
 }
