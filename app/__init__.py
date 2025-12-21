@@ -52,10 +52,6 @@ def create_app(config_class=Config):
     from .api.swap import swap_bp
     app.register_blueprint(swap_bp, url_prefix='/api/swap')
     
-    # 4. Genel API Routes (Varsa)
-    from .api.routes import api_bp
-    app.register_blueprint(api_bp, url_prefix='/api')
-    
     from .api.transactions import transactions_bp
     app.register_blueprint(transactions_bp, url_prefix='/api/transactions')
     
@@ -70,3 +66,18 @@ def create_app(config_class=Config):
         return "Ürün Kiralama API'si Çalışıyor!"
 
     return app
+
+def create_upload_folders(app):
+    """Resimlerin yükleneceği klasörleri ve alt klasörleri oluşturur"""
+    base = app.config['UPLOAD_FOLDER']
+    # Alt klasörleri de oluşturuyoruz ki düzenli olsun
+    subfolders = ['products', 'profiles', 'others']
+    
+    if not os.path.exists(base):
+        os.makedirs(base)
+        
+    for sub in subfolders:
+        path = os.path.join(base, sub)
+        if not os.path.exists(path):
+            os.makedirs(path)
+            

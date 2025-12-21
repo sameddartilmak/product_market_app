@@ -6,7 +6,6 @@ import { toast } from 'react-toastify'
 // --- MANTINE IMPORTLARI ---
 import { 
   Container, 
-  Grid, 
   SimpleGrid, 
   Card, 
   Image, 
@@ -15,7 +14,6 @@ import {
   Button, 
   Group, 
   TextInput, 
-  ActionIcon, 
   Loader, 
   Center,
   Box,
@@ -40,9 +38,27 @@ function Home() {
     { id: 'diger', label: '📦 Diğer' }
   ]
 
+  // --- HELPER: Resim URL Düzeltici ---
+  // Backend'den "/static/..." gelirse başına sunucu adresini ekler.
+  const getImageUrl = (url) => {
+    if (!url) return 'https://placehold.co/300x200?text=Resim+Yok';
+    if (url.startsWith('http')) return url;
+    return `http://127.0.0.1:5000${url}`;
+  };
+
+  // --- HELPER: İlan Tipi Rengi ve Metni ---
+  const getListingBadge = (type) => {
+    switch (type) {
+        case 'rent': return { color: 'orange', label: 'Kiralık' };
+        case 'swap': return { color: 'purple', label: 'Takaslık' };
+        default: return { color: 'green', label: 'Satılık' };
+    }
+  };
+
   const fetchProducts = async (search = '', category = '') => {
     setLoading(true)
     try {
+      // URL oluşturma
       let url = 'http://127.0.0.1:5000/api/products/?'
       const params = new URLSearchParams()
       if (search) params.append('search', search)
@@ -157,68 +173,72 @@ function Home() {
       ) : (
         <>
             {products.length > 0 ? (
-                // SimpleGrid: Responsive Izgara Sistemi (Mobilde 1, Tablette 2, Masaüstünde 4 sütun)
+                // SimpleGrid: Responsive Izgara Sistemi
                 <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="lg">
-                    {products.map((product) => (
-                        <Card 
-                            key={product.id} 
-                            shadow="sm" 
-                            padding="lg" 
-                            radius="md" 
-                            withBorder
-                            component={Link} // Mantine Card'ı Link gibi davranır
-                            to={`/product/${product.id}`}
-                            style={{ textDecoration: 'none', color: 'inherit', transition: 'transform 0.2s' }}
-                            // Hover efekti için basit bir stil
-                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                        >
-                            <Card.Section>
-                                {/* Resim Alanı */}
-                                <Box pos="relative"> 
-                                    <Image
-                                        src={product.image_url || 'https://placehold.co/300x200?text=Resim+Yok'}
-                                        height={180}
-                                        alt={product.title}
-                                        fit="contain" // Resmi sığdır
-                                        bg="#f8f9fa" // Resim arkası gri fon
-                                        p="xs"
-                                    />
-                                    {/* Durum Badge'i (Resmin üzerine) */}
-                                    <Badge 
-                                        color={product.listing_type === 'rent' ? 'orange' : 'green'} 
-                                        variant="filled"
-                                        style={{ position: 'absolute', top: 10, right: 10 }}
-                                    >
-                                        {product.listing_type === 'rent' ? 'Kiralık' : 'Satılık'}
-                                    </Badge>
-                                </Box>
-                            </Card.Section>
-
-                            <Group justify="space-between" mt="md" mb="xs">
-                                <Text fw={600} truncate>{product.title}</Text>
-                            </Group>
-
-                            <Group justify="space-between" align="center" mt="sm">
-                                <Badge color="gray" variant="light" size="sm" tt="capitalize">
-                                    {product.category}
-                                </Badge>
-                                <Text fw={700} size="lg" c="green">
-                                    {product.price} TL
-                                </Text>
-                            </Group>
-
-                            <Button 
-                                color="blue" 
-                                fullWidth 
-                                mt="md" 
+                    {products.map((product) => {
+                        const badgeInfo = getListingBadge(product.listing_type);
+                        
+                        return (
+                            <Card 
+                                key={product.id} 
+                                shadow="sm" 
+                                padding="lg" 
                                 radius="md" 
-                                variant="light"
+                                withBorder
+                                component={Link} 
+                                to={`/product/${product.id}`}
+                                style={{ textDecoration: 'none', color: 'inherit', transition: 'transform 0.2s' }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                             >
-                                Detayları Gör
-                            </Button>
-                        </Card>
-                    ))}
+                                <Card.Section>
+                                    {/* Resim Alanı */}
+                                    <Box pos="relative"> 
+                                        <Image
+                                            src={getImageUrl(product.image_url)}
+                                            height={180}
+                                            alt={product.title}
+                                            fit="cover" // Resmi kırparak doldurur (daha şık durur)
+                                            fallbackSrc="https://placehold.co/300x200?text=Hata"
+                                            bg="#f8f9fa" 
+                                        />
+                                        
+                                        {/* Durum Badge'i */}
+                                        <Badge 
+                                            color={badgeInfo.color} 
+                                            variant="filled"
+                                            style={{ position: 'absolute', top: 10, right: 10, zIndex: 1 }}
+                                        >
+                                            {badgeInfo.label}
+                                        </Badge>
+                                    </Box>
+                                </Card.Section>
+
+                                <Group justify="space-between" mt="md" mb="xs">
+                                    <Text fw={600} truncate>{product.title}</Text>
+                                </Group>
+
+                                <Group justify="space-between" align="center" mt="sm">
+                                    <Badge color="gray" variant="light" size="sm" tt="capitalize">
+                                        {product.category}
+                                    </Badge>
+                                    <Text fw={700} size="lg" c="green">
+                                        {product.price} TL
+                                    </Text>
+                                </Group>
+
+                                <Button 
+                                    color="blue" 
+                                    fullWidth 
+                                    mt="md" 
+                                    radius="md" 
+                                    variant="light"
+                                >
+                                    Detayları Gör
+                                </Button>
+                            </Card>
+                        );
+                    })}
                 </SimpleGrid>
             ) : (
                 // Sonuç Bulunamadı Ekranı

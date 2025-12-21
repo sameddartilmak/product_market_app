@@ -1,10 +1,10 @@
-# app/api/admin.py
-import os
-from flask import Blueprint, jsonify, request, current_app
-from app.models import User, Product, Transaction, ProductImage
+from flask import Blueprint, jsonify
+from app.models import User, Product, Transaction
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from sqlalchemy import func
+# YENİ: Yardımcı fonksiyonumuzu import ediyoruz
+from app.utils import delete_file_from_url 
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -38,21 +38,18 @@ def get_admin_stats():
         'income': round(total_revenue, 2)
     }), 200
 
-# 2. TÜM VERİLERİ GETİR (Tablolar İçin)
+# 2. TÜM VERİLERİ GETİR
 @admin_bp.route('/all-data', methods=['GET'])
 @jwt_required()
 def get_all_data():
     if not check_admin(): return jsonify({'message': 'Yetkisiz!'}), 403
 
-    # Kullanıcılar
     users = User.query.all()
     users_data = [{'id': u.id, 'username': u.username, 'email': u.email, 'role': u.role} for u in users]
 
-    # Ürünler
     products = Product.query.all()
     products_data = [{'id': p.id, 'title': p.title, 'price': p.price, 'owner': p.owner.username, 'status': p.status} for p in products]
 
-    # İşlemler
     transactions = Transaction.query.order_by(Transaction.created_at.desc()).all()
     transactions_data = [{'id': t.id, 'product': t.product.title, 'buyer': t.buyer.username, 'seller': t.seller.username, 'price': float(t.price), 'type': t.transaction_type} for t in transactions]
 
@@ -76,7 +73,7 @@ def delete_user(user_id):
     db.session.commit()
     return jsonify({'message': 'Kullanıcı silindi.'}), 200
 
-# 4. ÜRÜN SİL (GÜNCELLENDİ: Dosya Temizliği Eklendi)
+# 4. ÜRÜN SİL (TEMİZLENDİ)
 @admin_bp.route('/delete-product/<int:product_id>', methods=['DELETE'])
 @jwt_required()
 def delete_product(product_id):
@@ -85,28 +82,13 @@ def delete_product(product_id):
     product = Product.query.get_or_404(product_id)
     
     try:
-        # --- ADIM 1: Fiziksel Dosyaları Sil ---
-        # Ürüne bağlı tüm resimler üzerinde dönüyoruz
+        # --- ADIM 1: Fiziksel Dosyaları Sil (Utils kullanılarak) ---
         if product.images:
             for img in product.images:
-                try:
-                    # URL'den dosya adını ayıkla
-                    # Örn: http://localhost:5000/static/uploads/resim.jpg -> resim.jpg
-                    filename = img.image_url.split('/')[-1]
-                    
-                    # Dosyanın tam yolunu bul
-                    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-                    
-                    # Dosya varsa sil
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                        print(f"Admin sildi: {filename}")
-                except Exception as e:
-                    print(f"Dosya silme hatası: {e}")
+                # O karmaşık os.path kodları yerine sadece bunu çağırıyoruz:
+                delete_file_from_url(img.image_url)
 
         # --- ADIM 2: Veritabanından Sil ---
-        # (Eğer models.py içinde cascade="all, delete-orphan" varsa
-        # product_images tablosundaki satırlar otomatik silinir)
         db.session.delete(product)
         db.session.commit()
         

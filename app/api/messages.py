@@ -71,6 +71,7 @@ def get_conversations():
                 conversations[other_user_id] = {
                     'user_id': other_user.id,
                     'username': other_user.username,
+                    'profile_image': other_user.profile_image,
                     'last_message': msg.content,
                     'date': msg.created_at.strftime('%Y-%m-%d %H:%M')
                 }
@@ -100,6 +101,7 @@ def get_chat_history(other_user_id):
             'id': msg.id,
             'sender_id': msg.sender_id,
             'sender_name': msg.sender.username,
+            'sender_image': msg.sender.profile_image,
             'content': msg.content,
             'is_me': (msg.sender_id == current_user_id), # Frontend'de sağa/sola yaslamak için
             'date': msg.created_at.strftime('%H:%M')

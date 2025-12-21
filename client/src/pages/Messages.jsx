@@ -1,13 +1,15 @@
-// client/src/pages/Messages.jsx
-import { useState, useEffect, useRef } from 'react'
-import axios from 'axios'
+import { useState, useEffect, useRef, useContext } from 'react'
+import axiosClient from '../api/axiosClient'
 import { toast } from 'react-toastify'
 import { useNavigate } from 'react-router-dom'
+import { AuthContext } from '../context/AuthContext'
 
 function Messages() {
-  // --- MANTIK KISMI (HİÇ DOKUNULMADI - AYNEN KORUNDU) ---
   const navigate = useNavigate()
   
+  // Navbar'daki sayıyı güncellemek için Context'i kullanıyoruz
+  const { setUnreadCount } = useContext(AuthContext);
+
   const [conversations, setConversations] = useState([]) 
   const [selectedUser, setSelectedUser] = useState(null) 
   const [chatHistory, setChatHistory] = useState([])     
@@ -16,10 +18,21 @@ function Messages() {
 
   const messagesEndRef = useRef(null)
 
-  const token = localStorage.getItem('token')
-  const currentUserId = parseInt(localStorage.getItem('user_id'))
+  const getUserID = () => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+        try {
+            return JSON.parse(userStr).id;
+        } catch (e) {
+            return null;
+        }
+    }
+    return null;
+  };
+  const currentUserId = getUserID();
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
     if (!token) {
         navigate('/login')
         return
@@ -33,10 +46,30 @@ function Messages() {
 
   const fetchConversations = async () => {
     try {
-        const res = await axios.get('http://127.0.0.1:5000/api/messages/conversations', {
-            headers: { Authorization: `Bearer ${token}` }
+        const res = await axiosClient.get('/messages/conversations')
+        
+        // --- GÜNCELLEME: Mesaj Sayısı Simülasyonu ---
+        const formattedData = res.data.map(conv => {
+            // Backend'den 'unread_count' geliyorsa onu al.
+            // Gelmiyorsa (backend hazır değilse), test için 1 ile 5 arası rastgele sayı üret.
+            // Böylece arayüzde "3", "5" gibi farklı sayılar görebilirsin.
+            const fakeCount = Math.floor(Math.random() * 5) + 1; 
+            const finalCount = conv.unread_count !== undefined ? conv.unread_count : fakeCount;
+
+            return {
+                ...conv,
+                // Eğer backend 'is_unread' bilgisini göndermiyorsa, varsayılan olarak 'true' yapıyoruz
+                is_unread: conv.is_unread !== undefined ? conv.is_unread : true, 
+                unread_count: finalCount
+            };
         })
-        setConversations(res.data)
+        
+        setConversations(formattedData)
+        
+        // Navbar'daki sayıyı güncelle (Toplam okunmamış kişi sayısı)
+        const totalUnread = formattedData.filter(c => c.is_unread).length;
+        setUnreadCount(totalUnread);
+        
         setLoading(false)
     } catch (error) {
         console.error(error)
@@ -46,10 +79,19 @@ function Messages() {
 
   const selectUser = async (user) => {
     setSelectedUser(user)
+
+    // Mesajı okundu olarak işaretle
+    if (user.is_unread) {
+        setConversations(prev => prev.map(c => 
+            c.user_id === user.user_id ? { ...c, is_unread: false, unread_count: 0 } : c
+        ))
+        
+        // Navbar'daki sayıyı 1 azalt
+        setUnreadCount(prev => (prev > 0 ? prev - 1 : 0));
+    }
+
     try {
-        const res = await axios.get(`http://127.0.0.1:5000/api/messages/${user.user_id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-        })
+        const res = await axiosClient.get(`/messages/${user.user_id}`)
         setChatHistory(res.data)
     } catch (error) {
         toast.error("Sohbet geçmişi alınamadı.")
@@ -61,11 +103,9 @@ function Messages() {
     if (!newMessage.trim()) return
 
     try {
-        await axios.post('http://127.0.0.1:5000/api/messages/send', {
+        await axiosClient.post('/messages/send', {
             receiver_id: selectedUser.user_id,
             content: newMessage
-        }, {
-            headers: { Authorization: `Bearer ${token}` }
         })
         
         setChatHistory([...chatHistory, {
@@ -83,13 +123,37 @@ function Messages() {
     }
   }
 
+  // --- HELPER: Avatar Gösterici ---
+  const renderAvatar = (imageUrl, username, size = '45px') => {
+      const hasImage = Boolean(imageUrl);
+      const fullUrl = hasImage && !imageUrl.startsWith('http') 
+          ? `http://127.0.0.1:5000${imageUrl}` 
+          : imageUrl;
+
+      return (
+          <div style={{...styles.avatarBase, width: size, height: size}}>
+              {hasImage ? (
+                  <img 
+                      src={fullUrl} 
+                      alt={username} 
+                      style={{width: '100%', height: '100%', objectFit: 'cover', display: 'block'}}
+                      onError={(e) => { e.target.style.display = 'none'; }} 
+                  />
+              ) : (
+                  <span style={{fontWeight:'bold', color:'#4b5563', fontSize: '1.2rem'}}>
+                      {username?.charAt(0).toUpperCase()}
+                  </span>
+              )}
+          </div>
+      );
+  };
+
   if (loading) return (
     <div style={{display:'flex', justifyContent:'center', alignItems:'center', height:'100vh', color:'#6366f1'}}>
         <h3>Yükleniyor...</h3>
     </div>
   )
 
-  // --- YENİ TASARIM (JSX) ---
   return (
     <div style={styles.pageWrapper}>
         <div style={styles.container}>
@@ -98,7 +162,6 @@ function Messages() {
         <div style={styles.sidebar}>
             <div style={styles.sidebarHeader}>
                 <h3 style={styles.headerTitle}>Gelen Kutusu</h3>
-                <span style={styles.badge}>{conversations.length}</span>
             </div>
 
             <div style={styles.userList}>
@@ -114,16 +177,44 @@ function Messages() {
                             onClick={() => selectUser(c)}
                             style={{
                                 ...styles.userItem,
-                                backgroundColor: selectedUser?.user_id === c.user_id ? '#f3f4f6' : 'transparent',
-                                borderRight: selectedUser?.user_id === c.user_id ? '4px solid #4f46e5' : '4px solid transparent'
+                                // Okunmamışsa mavi arka plan, seçiliyse gri
+                                backgroundColor: selectedUser?.user_id === c.user_id 
+                                    ? '#f3f4f6' 
+                                    : (c.is_unread ? '#eff6ff' : 'transparent'),
+                                borderRight: selectedUser?.user_id === c.user_id 
+                                    ? '4px solid #4f46e5' 
+                                    : '4px solid transparent'
                             }}
                         >
-                            <div style={styles.avatar}>
-                                {c.username.charAt(0).toUpperCase()}
+                            <div style={styles.avatarContainer}>
+                                {renderAvatar(c.profile_image, c.username)}
                             </div>
+                            
                             <div style={styles.userInfo}>
-                                <div style={styles.userName}>{c.username}</div>
-                                <div style={styles.lastMsg}>{c.last_message}</div>
+                                <div style={{
+                                    ...styles.userName, 
+                                    fontWeight: c.is_unread ? '800' : '600',
+                                    color: c.is_unread ? '#111827' : '#4b5563'
+                                }}>
+                                    {c.username}
+                                </div>
+                                <div style={{
+                                    ...styles.lastMsg,
+                                    fontWeight: c.is_unread ? '600' : '400',
+                                    color: c.is_unread ? '#4f46e5' : '#6b7280'
+                                }}>
+                                    {c.last_message}
+                                </div>
+                            </div>
+
+                            {/* --- Sağ Taraf: Saat ve Rozet --- */}
+                            <div style={styles.metaInfo}>
+                                <span style={styles.metaTime}>14:30</span>
+                                {c.is_unread && (
+                                    <div style={styles.unreadBadge}>
+                                        {c.unread_count}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))
@@ -135,10 +226,9 @@ function Messages() {
         <div style={styles.chatArea}>
             {selectedUser ? (
                 <>
-                    {/* Sohbet Başlığı */}
                     <div style={styles.chatHeader}>
                         <div style={styles.headerAvatar}>
-                            {selectedUser.username.charAt(0).toUpperCase()}
+                             {renderAvatar(selectedUser.profile_image, selectedUser.username, '40px')}
                         </div>
                         <div>
                             <h3 style={styles.chatUserName}>{selectedUser.username}</h3>
@@ -146,7 +236,6 @@ function Messages() {
                         </div>
                     </div>
 
-                    {/* Mesaj Balonları */}
                     <div style={styles.messagesList}>
                         {chatHistory.map((msg) => (
                             <div 
@@ -176,7 +265,6 @@ function Messages() {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Mesaj Yazma Kutusu */}
                     <form onSubmit={handleSendMessage} style={styles.inputArea}>
                         <input 
                             type="text" 
@@ -204,11 +292,11 @@ function Messages() {
   )
 }
 
-// --- YENİ MODERN STYLES ---
+// --- STYLES ---
 const styles = {
   pageWrapper: {
     minHeight: '100vh',
-    backgroundColor: '#f9fafb', // Sayfa arka planı
+    backgroundColor: '#f9fafb',
     display: 'flex',
     justifyContent: 'center',
     padding: '40px 20px',
@@ -218,7 +306,7 @@ const styles = {
     display: 'flex', 
     width: '100%',
     maxWidth: '1100px', 
-    height: '75vh', // Ekranın %75'i kadar yükseklik
+    height: '75vh',
     backgroundColor: 'white', 
     borderRadius: '24px', 
     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.1)', 
@@ -242,7 +330,6 @@ const styles = {
     alignItems: 'center'
   },
   headerTitle: { margin: 0, fontSize: '1.2rem', fontWeight: '800', color: '#111827' },
-  badge: { backgroundColor: '#e0e7ff', color: '#4338ca', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' },
   
   userList: { overflowY: 'auto', flex: 1, padding: '10px' },
   emptySidebar: { textAlign: 'center', marginTop: '50px', color: '#9ca3af' },
@@ -255,26 +342,72 @@ const styles = {
     cursor: 'pointer', 
     borderRadius: '12px', 
     marginBottom: '5px',
-    transition: 'all 0.2s ease'
+    transition: 'all 0.2s ease',
+    position: 'relative'
   },
-  avatar: { 
-    width: '45px', 
-    height: '45px', 
-    borderRadius: '50%', 
-    backgroundColor: '#e5e7eb', 
-    color: '#4b5563', 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    fontWeight: 'bold',
-    fontSize: '1.1rem',
-    flexShrink: 0
-  },
-  userInfo: { overflow: 'hidden', display:'flex', flexDirection:'column', justifyContent:'center' },
-  userName: { fontWeight: '600', color: '#1f2937', fontSize: '0.95rem' },
-  lastMsg: { fontSize: '0.8rem', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' },
   
-  // SAĞ TARAF (CHAT AREA)
+  avatarContainer: {
+    position: 'relative',
+    display: 'flex',       
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '45px',         
+    height: '45px',        
+    flexShrink: 0          
+  },
+  avatarBase: {
+      borderRadius: '50%',
+      backgroundColor: '#e5e7eb',
+      color: '#4b5563',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontWeight: 'bold',
+      fontSize: '1.1rem',
+      flexShrink: 0,
+      overflow: 'hidden',
+      border: '1px solid #d1d5db' 
+  },
+
+  userInfo: { 
+    flex: 1, 
+    overflow: 'hidden', 
+    display:'flex', 
+    flexDirection:'column', 
+    justifyContent:'center' 
+  },
+  userName: { fontSize: '0.95rem' },
+  lastMsg: { fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' },
+  
+  // --- SAĞ TARAF (METADATA) ---
+  metaInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: '6px',
+    minWidth: '40px'
+  },
+  metaTime: {
+    fontSize: '0.7rem',
+    color: '#9ca3af',
+    fontWeight: '500'
+  },
+  // Kırmızı Yuvarlak Rozet (Esnek Genişlik)
+  unreadBadge: {
+    backgroundColor: '#ef4444', 
+    color: 'white',
+    fontSize: '0.75rem',
+    fontWeight: 'bold',
+    minWidth: '20px',      // Minimum genişlik
+    height: '20px',
+    borderRadius: '12px',  // Hap şekli için
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0 6px',      // İç boşluk (sayı büyürse taşmasın)
+    boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)'
+  },
+
   chatArea: { flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#fdfdfd' },
   
   chatHeader: { 
@@ -288,15 +421,10 @@ const styles = {
     zIndex: 10
   },
   headerAvatar: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
-    backgroundColor: '#4f46e5', // İndigo
-    color: 'white',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontWeight: 'bold'
+    flexShrink: 0
   },
   chatUserName: { margin: 0, fontSize: '1.1rem', color: '#111827' },
   statusText: { fontSize: '0.8rem', color: '#10b981', fontWeight: '500' },
@@ -305,11 +433,11 @@ const styles = {
     flex: 1, 
     padding: '30px', 
     overflowY: 'auto', 
-    backgroundColor: '#f9fafb', // Hafif gri arka plan (Sohbet alanı)
+    backgroundColor: '#f9fafb',
     display: 'flex', 
     flexDirection: 'column', 
     gap: '15px',
-    backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)', // İnce nokta deseni
+    backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)',
     backgroundSize: '20px 20px'
   },
   
@@ -321,10 +449,10 @@ const styles = {
     fontSize: '0.95rem',
     lineHeight: '1.5'
   },
-  msgContent: { wordWrap: 'break-word' },
+  msgContent: { wordWrap: 'break-word' }, 
+  
   msgDate: { fontSize:'0.7rem', textAlign:'right', marginTop:'6px', fontWeight: '500' },
   
-  // Input Alanı
   inputArea: { 
     padding: '20px', 
     borderTop: '1px solid #e5e7eb', 
@@ -370,4 +498,4 @@ const styles = {
   emptyIcon: { fontSize: '4rem', marginBottom: '20px', opacity: 0.5 }
 }
 
-export default Messages
+export default Messages;

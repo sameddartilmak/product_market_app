@@ -26,10 +26,13 @@ class User(db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(20), default='customer')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    bio = db.Column(db.Text, nullable=True)             # Hakkında yazısı
-    location = db.Column(db.String(100), nullable=True)   # Konum bilgisi
-    profile_image = db.Column(db.String(255), nullable=True) # Profil resmi URL'si
+    
+    # Profil Bilgileri
+    bio = db.Column(db.Text, nullable=True)             
+    location = db.Column(db.String(100), nullable=True)   
+    profile_image = db.Column(db.String(255), nullable=True) 
 
+    # İlişkiler
     products = db.relationship('Product', backref='owner', lazy=True)
 
     def set_password(self, password):
@@ -45,12 +48,18 @@ class Product(db.Model):
     title = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
     category = db.Column(db.String(50), nullable=False)
-    price = db.Column(db.Float, default=0.0)
+    # Price float yerine Numeric kullanımı finansal işlemler için daha güvenlidir ama float kalsın dersen kalabilir.
+    price = db.Column(db.Float, default=0.0) 
+    
     listing_type = db.Column(db.String(20), default=ListingType.SALE.value)
-    status = db.Column(db.String(20), default='available') 
-    image_url = db.Column(db.String(500), nullable=True)
+    status = db.Column(db.String(20), default='available') # available, sold, swapped, rented
+    
+    image_url = db.Column(db.String(500), nullable=True) # Kapak resmi
     created_at = db.Column(db.DateTime, default=datetime.utcnow) 
+    
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # İlişkiler
     images = db.relationship('ProductImage', backref='product', lazy=True, cascade="all, delete-orphan")
 
 class SwapOffer(db.Model):
@@ -58,32 +67,33 @@ class SwapOffer(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     
-    # Teklifi yapan kişi (Alici)
-    buyer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    # 1. Teklifi Yapan (Swap.py ile uyumlu olması için buyer_id yerine offerer_id yaptık)
+    offerer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
-    # İstenen Ürün (Hedef - Karşı tarafın ürünü)
+    # 2. Hedef Ürün (Karşı tarafın ürünü)
     target_product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     
-    # Karşılığında Verilen Ürün (Teklif Edilen - Benim ürünüm)
-    offering_product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    # 3. Teklif Edilen Ürün (Benim ürünüm) - (İsim düzeltmesi: offering -> offered)
+    offered_product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     
-    # Durum: pending, accepted, rejected
+    # 4. Mesaj (Swap.py içinde message gönderiyoruz, buraya ekledik)
+    message = db.Column(db.Text, nullable=True)
+
     status = db.Column(db.String(20), default=OfferStatus.PENDING.value)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # İlişkiler
-    buyer = db.relationship('User', foreign_keys=[buyer_id])
-    target_product = db.relationship('Product', foreign_keys=[target_product_id])
-    offering_product = db.relationship('Product', foreign_keys=[offering_product_id])
+    # İlişkiler (Swap.py içindeki isimlerle eşleştirdik)
+    offerer = db.relationship('User', foreign_keys=[offerer_id], backref='swap_offers_made')
+    target_product = db.relationship('Product', foreign_keys=[target_product_id], backref='swap_offers_received')
+    offered_product = db.relationship('Product', foreign_keys=[offered_product_id])
 
 class ProductImage(db.Model):
     __tablename__ = 'product_images'
 
     id = db.Column(db.Integer, primary_key=True)
-    image_url = db.Column(db.String(255), nullable=False) # Resmin yolu
+    image_url = db.Column(db.String(255), nullable=False) 
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
 
-        
 class Transaction(db.Model):
     __tablename__ = 'transactions'
 
@@ -102,11 +112,11 @@ class Transaction(db.Model):
     price = db.Column(db.Numeric(10, 2), nullable=False)
     status = db.Column(db.String(20), default='COMPLETED')
     
+    # Kiralama tarihleri (transactions.py için zorunlu)
     start_date = db.Column(db.Date, nullable=True) 
     end_date = db.Column(db.Date, nullable=True)  
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
 
 class Message(db.Model):
     __tablename__ = 'messages'
@@ -122,5 +132,3 @@ class Message(db.Model):
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
     receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_messages')
     product = db.relationship('Product', backref='messages')
-
-

@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify, current_app
 from app.models import User
 from app import db, bcrypt
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from app.utils import save_file, delete_file_from_url
 
 # =========================================================
 # 1. BLUEPRINT TANIMI (EN ÜSTTE!)
@@ -126,21 +127,15 @@ def update_profile():
         file = request.files['profile_image']
         
         if file and file.filename:
-            base_folder = current_app.config['UPLOAD_FOLDER']
-            users_folder = os.path.join(base_folder, 'users')
+            # A) Eski resim varsa sil (Çöp oluşmasın)
+            if user.profile_image:
+                delete_file_from_url(user.profile_image)
             
-            if not os.path.exists(users_folder):
-                os.makedirs(users_folder)
+            # B) Yeni resmi 'profiles' klasörüne kaydet
+            new_image_url = save_file(file, folder_name='profiles')
             
-            ext = os.path.splitext(file.filename)[1]
-            filename = f"user_{user.id}_{uuid.uuid4().hex}{ext}"
-            file_path = os.path.join(users_folder, filename)
-            
-            file.save(file_path)
-            
-            full_url = f"http://127.0.0.1:5000/static/uploads/users/{filename}"
-            user.profile_image = full_url
-
+            if new_image_url:
+                user.profile_image = new_image_url
     db.session.commit()
     
     return jsonify({

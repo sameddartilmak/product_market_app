@@ -2,7 +2,7 @@ import { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
-// Mantine Bileşenleri
+// Mantine Bileşenleri (Indicator kaldırıldı)
 import { 
   Container, 
   Group, 
@@ -10,14 +10,19 @@ import {
   Text, 
   Avatar, 
   Menu, 
-  Indicator, 
-  Box, 
-  rem 
+  Box 
 } from '@mantine/core';
 
 function Navbar() {
-  const { user, logout, unreadCount } = useContext(AuthContext);
+  // unreadCount'a artık ihtiyacımız yok
+  const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  // Profil Resmi URL Düzeltici
+  const getAvatarUrl = (url) => {
+    if (!url) return null;
+    return url.startsWith('http') ? url : `http://127.0.0.1:5000${url}`;
+  };
 
   const handleLogout = () => {
     logout();
@@ -25,7 +30,6 @@ function Navbar() {
   };
 
   return (
-    // Header Kapsayıcısı (Beyaz arka plan, alt çizgi, sticky)
     <Box 
       component="header" 
       style={{ 
@@ -57,29 +61,18 @@ function Navbar() {
             
             {user ? (
               <>
-                {/* --- ADMİN GÖRÜNÜMÜ --- */}
                 {user.role === 'admin' ? (
                   <Text c="dimmed" size="sm" fw={500}>Hoşgeldin, Admin</Text>
                 ) : (
-                  /* --- MÜŞTERİ GÖRÜNÜMÜ --- */
                   <>
                     <Button variant="subtle" component={Link} to="/" color="gray">
                       Vitrin
                     </Button>
 
-                    {/* Mesajlar Butonu ve Bildirim Rozeti */}
-                    <Indicator 
-                      inline 
-                      label={unreadCount} 
-                      size={16} 
-                      color="red" 
-                      disabled={unreadCount === 0} // 0 ise rozeti gizle
-                      offset={4}
-                    >
-                      <Button variant="subtle" component={Link} to="/messages" color="gray">
-                        💬 Mesajlar
-                      </Button>
-                    </Indicator>
+                    {/* Mesajlar Butonu (Sayı göstergesi kaldırıldı) */}
+                    <Button variant="subtle" component={Link} to="/messages" color="gray">
+                      💬 Mesajlar
+                    </Button>
 
                     <Button 
                       component={Link} 
@@ -93,20 +86,22 @@ function Navbar() {
                   </>
                 )}
 
-                {/* --- PROFİL MENÜSÜ (DROPDOWN) --- */}
+                {/* --- PROFİL MENÜSÜ --- */}
                 <Menu shadow="md" width={200} trigger="hover" openDelay={100} closeDelay={400}>
                   <Menu.Target>
                     <Button 
                         variant="light" 
                         color="blue" 
-                        pl={5} // Sol padding'i biraz kıstık ki avatar yapışsın
+                        pl={5} 
                         leftSection={
                             <Avatar 
-                                src={user.profile_image} 
+                                src={getAvatarUrl(user.profile_image)} 
                                 alt={user.username} 
                                 radius="xl" 
                                 size={30} 
-                            />
+                            >
+                                {user.username.charAt(0).toUpperCase()}
+                            </Avatar>
                         }
                     >
                         {user.username}
@@ -134,7 +129,6 @@ function Navbar() {
                 </Menu>
               </>
             ) : (
-              /* --- GİRİŞ YAPMAMIŞ KULLANICI --- */
               <Group>
                 <Button variant="default" component={Link} to="/login">
                   Giriş Yap

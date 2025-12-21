@@ -1,6 +1,6 @@
-// client/src/context/AuthContext.jsx
 import { createContext, useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
+import axiosClient from '../api/axiosClient' // EKLENDİ: API isteği için
 
 export const AuthContext = createContext()
 
@@ -8,8 +8,27 @@ export const AuthProvider = ({ children }) => {
   // Kullanıcı verisi
   const [user, setUser] = useState(null)
   
+  // YENİ: Okunmamış mesaj sayısı state'i
+  const [unreadCount, setUnreadCount] = useState(0)
+
   // Uygulama ilk açıldığında kontrol sürerken beyaz ekran göstermek için:
   const [loading, setLoading] = useState(true)
+
+  // --- YENİ: Mesaj Sayısını Güncelleme Fonksiyonu ---
+  const updateUnreadCount = async () => {
+    // Eğer kullanıcı veya token yoksa işlem yapma
+    if (!localStorage.getItem('token')) return;
+
+    try {
+        const res = await axiosClient.get('/messages/conversations');
+        // NOT: Backend henüz 'is_unread' sayısını ayrı vermediği için
+        // şimdilik listedeki toplam konuşma sayısını alıyoruz.
+        // İleride: const count = res.data.filter(c => c.is_unread).length;
+        setUnreadCount(res.data.length); 
+    } catch (error) {
+        console.error("Mesaj sayısı güncellenemedi:", error);
+    }
+  }
 
   // --- 1. Başlangıç Kontrolü (Sayfa Yenilenince) ---
   useEffect(() => {
@@ -23,16 +42,26 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (error) {
         console.error("❌ Auth verisi okunurken hata:", error)
-        // Veri bozuksa temizle ki döngüye girmesin
         localStorage.removeItem('user')
         localStorage.removeItem('token')
       } finally {
-        setLoading(false) // Kontrol bitti, uygulamayı göster
+        setLoading(false)
       }
     }
 
     checkUserLoggedIn()
   }, [])
+
+  // --- YENİ: Kullanıcı varsa mesaj sayısını düzenli kontrol et ---
+  useEffect(() => {
+    if (user) {
+        updateUnreadCount(); // İlk yüklemede çek
+        
+        // Opsiyonel: Her 30 saniyede bir yeni mesaj var mı diye arkada kontrol et
+        const interval = setInterval(updateUnreadCount, 30000);
+        return () => clearInterval(interval);
+    }
+  }, [user]); // user değişince (login olunca) çalışır
 
   // --- 2. Giriş İşlemi ---
   const login = (userData, token) => {
@@ -42,19 +71,22 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('token', token) 
     localStorage.setItem('user', JSON.stringify(userData))
     
-    // Kullanıcıya hoş bir karşılama (UX İyileştirmesi)
-    toast.success(`Tekrar hoş geldin, ${userData.name || 'Gezgin'}! 👋`)
+    // YENİ: Giriş yapınca mesaj sayısını hemen çek
+    updateUnreadCount(); 
+
+    toast.success(`Tekrar hoş geldin, ${userData.name || userData.username || 'Gezgin'}! 👋`)
   }
 
   // --- 3. Çıkış İşlemi ---
   const logout = () => {
     setUser(null)
+    setUnreadCount(0) // YENİ: Çıkışta sayacı sıfırla
+    
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     
     toast.info("Başarıyla çıkış yapıldı. Görüşmek üzere! 🌟")
     
-    // Yönlendirme için kısa bir gecikme verilebilir veya direkt yapılabilir
     setTimeout(() => {
         window.location.href = '/'
     }, 500)
@@ -62,7 +94,6 @@ export const AuthProvider = ({ children }) => {
 
   // --- 4. Profil Güncelleme ---
   const updateUser = (newUserData) => {
-    // Mevcut kullanıcı yoksa işlem yapma
     if (!user) return
 
     const updatedUser = { ...user, ...newUserData }
@@ -71,20 +102,28 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updatedUser))
     
     toast.success("Profil bilgilerin güncellendi! ✅")
-    console.log("✅ AuthContext: Kullanıcı güncellendi ->", updatedUser)
   }
 
-  // --- Yükleniyor Ekranı (Opsiyonel ama çok profesyonel durur) ---
+  // --- Yükleniyor Ekranı ---
   if (loading) {
      return (
-        <div style={{height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
-            <div className="spinner">Yükleniyor...</div> {/* Buraya bir spinner componenti de koyabilirsin */}
+        <div style={{height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6366f1'}}>
+            <h3>Yükleniyor...</h3>
         </div>
      )
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateUser, loading }}>
+    <AuthContext.Provider value={{ 
+        user, 
+        login, 
+        logout, 
+        updateUser, 
+        loading,
+        unreadCount,       // Dışarıya açtık (Navbar kullanacak)
+        setUnreadCount,    // Dışarıya açtık (Messages.jsx manuel azaltacak)
+        updateUnreadCount  // Dışarıya açtık (Gerekirse tetiklemek için)
+    }}>
       {children}
     </AuthContext.Provider>
   )
