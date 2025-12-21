@@ -1,29 +1,22 @@
 import { createContext, useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
-import axiosClient from '../api/axiosClient' // EKLENDİ: API isteği için
+import axiosClient from '../api/axiosClient'
 
 export const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
-  // Kullanıcı verisi
   const [user, setUser] = useState(null)
-  
-  // YENİ: Okunmamış mesaj sayısı state'i
   const [unreadCount, setUnreadCount] = useState(0)
-
-  // Uygulama ilk açıldığında kontrol sürerken beyaz ekran göstermek için:
   const [loading, setLoading] = useState(true)
 
-  // --- YENİ: Mesaj Sayısını Güncelleme Fonksiyonu ---
+  // --- Mesaj Sayısını Güncelleme ---
   const updateUnreadCount = async () => {
-    // Eğer kullanıcı veya token yoksa işlem yapma
-    if (!localStorage.getItem('token')) return;
+    // DEĞİŞİKLİK: Token kontrolünü sessionStorage'dan yap (Oturum açık mı?)
+    if (!sessionStorage.getItem('token')) return;
 
     try {
         const res = await axiosClient.get('/messages/conversations');
-        // NOT: Backend henüz 'is_unread' sayısını ayrı vermediği için
-        // şimdilik listedeki toplam konuşma sayısını alıyoruz.
-        // İleride: const count = res.data.filter(c => c.is_unread).length;
+        // Backend 'is_unread' göndermiyorsa şimdilik liste uzunluğunu alıyoruz
         setUnreadCount(res.data.length); 
     } catch (error) {
         console.error("Mesaj sayısı güncellenemedi:", error);
@@ -34,16 +27,18 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkUserLoggedIn = () => {
       try {
-        const storedUser = localStorage.getItem('user')
-        const storedToken = localStorage.getItem('token')
+        // DEĞİŞİKLİK: Verileri sessionStorage'dan oku
+        // (Tarayıcı kapatılıp açıldıysa burası boş gelecek ve oturum açılmayacak)
+        const storedUser = sessionStorage.getItem('user')
+        const storedToken = sessionStorage.getItem('token')
 
         if (storedUser && storedToken) {
           setUser(JSON.parse(storedUser))
         }
       } catch (error) {
         console.error("❌ Auth verisi okunurken hata:", error)
-        localStorage.removeItem('user')
-        localStorage.removeItem('token')
+        sessionStorage.removeItem('user')
+        sessionStorage.removeItem('token')
       } finally {
         setLoading(false)
       }
@@ -52,26 +47,24 @@ export const AuthProvider = ({ children }) => {
     checkUserLoggedIn()
   }, [])
 
-  // --- YENİ: Kullanıcı varsa mesaj sayısını düzenli kontrol et ---
+  // --- Kullanıcı varsa mesaj sayısını takip et ---
   useEffect(() => {
     if (user) {
-        updateUnreadCount(); // İlk yüklemede çek
-        
-        // Opsiyonel: Her 30 saniyede bir yeni mesaj var mı diye arkada kontrol et
+        updateUnreadCount(); 
         const interval = setInterval(updateUnreadCount, 30000);
         return () => clearInterval(interval);
     }
-  }, [user]); // user değişince (login olunca) çalışır
+  }, [user]);
 
   // --- 2. Giriş İşlemi ---
   const login = (userData, token) => {
     setUser(userData)
     
-    // Verileri tarayıcıya kaydet
-    localStorage.setItem('token', token) 
-    localStorage.setItem('user', JSON.stringify(userData))
+    // DEĞİŞİKLİK: Token ve User'ı sessionStorage'a kaydet (Geçici Hafıza)
+    // Böylece tarayıcı kapanınca bu bilgiler silinir.
+    sessionStorage.setItem('token', token) 
+    sessionStorage.setItem('user', JSON.stringify(userData))
     
-    // YENİ: Giriş yapınca mesaj sayısını hemen çek
     updateUnreadCount(); 
 
     toast.success(`Tekrar hoş geldin, ${userData.name || userData.username || 'Gezgin'}! 👋`)
@@ -80,10 +73,13 @@ export const AuthProvider = ({ children }) => {
   // --- 3. Çıkış İşlemi ---
   const logout = () => {
     setUser(null)
-    setUnreadCount(0) // YENİ: Çıkışta sayacı sıfırla
+    setUnreadCount(0)
     
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    // DEĞİŞİKLİK: sessionStorage'ı temizle
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
+    
+    // NOT: localStorage'daki 'remember_creds' silinmiyor, böylece bilgiler inputlarda kalıyor.
     
     toast.info("Başarıyla çıkış yapıldı. Görüşmek üzere! 🌟")
     
@@ -99,12 +95,12 @@ export const AuthProvider = ({ children }) => {
     const updatedUser = { ...user, ...newUserData }
     
     setUser(updatedUser)
-    localStorage.setItem('user', JSON.stringify(updatedUser))
+    // DEĞİŞİKLİK: sessionStorage güncelle
+    sessionStorage.setItem('user', JSON.stringify(updatedUser))
     
     toast.success("Profil bilgilerin güncellendi! ✅")
   }
 
-  // --- Yükleniyor Ekranı ---
   if (loading) {
      return (
         <div style={{height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6366f1'}}>
@@ -120,9 +116,9 @@ export const AuthProvider = ({ children }) => {
         logout, 
         updateUser, 
         loading,
-        unreadCount,       // Dışarıya açtık (Navbar kullanacak)
-        setUnreadCount,    // Dışarıya açtık (Messages.jsx manuel azaltacak)
-        updateUnreadCount  // Dışarıya açtık (Gerekirse tetiklemek için)
+        unreadCount,       
+        setUnreadCount,    
+        updateUnreadCount  
     }}>
       {children}
     </AuthContext.Provider>

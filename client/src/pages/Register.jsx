@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import axios from 'axios'
+import axiosClient from '../api/axiosClient' // DÜZELTME: Global Client kullanıldı
 import { toast } from 'react-toastify'
 import { useNavigate, Link } from 'react-router-dom'
 
@@ -25,18 +25,41 @@ function Register() {
     password: ''
   })
 
-  // --- MANTIK KISMI (AYNEN KORUNDU) ---
+  // YENİ: Email hatasını tutacak state
+  const [emailError, setEmailError] = useState('')
+
+  // --- MANTIK KISMI ---
   const handleChange = (e) => {
+    // Kullanıcı yazı yazarken hata mesajını temizle
+    if (e.target.name === 'email') {
+        setEmailError('');
+    }
+
     setFormData({
         ...formData,
         [e.target.name]: e.target.value
     })
   }
 
+  // YENİ: Email Doğrulama Fonksiyonu (Regex)
+  const validateEmail = (email) => {
+    // Format: yazı@yazı.yazı (Örn: a@b.com)
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault()
+
+    // 1. Email Format Kontrolü
+    if (!validateEmail(formData.email)) {
+        setEmailError('Lütfen geçerli bir e-posta adresi girin (örn: isim@gmail.com)');
+        return; // İşlemi durdur
+    }
+
     try {
-      await axios.post('http://127.0.0.1:5000/api/auth/register', formData)
+      // DÜZELTME: Uzun URL yerine axiosClient kullanıldı
+      await axiosClient.post('/auth/register', formData)
       
       toast.success("Kayıt başarılı! Giriş yapılıyor...")
       
@@ -47,14 +70,14 @@ function Register() {
 
     } catch (error) {
       if (error.response) {
-        toast.error(error.response.data.message || 'Kayıt başarısız')
+        toast.error(error.response.data.message || error.response.data.error || 'Kayıt başarısız')
       } else {
         toast.error('Sunucuya bağlanılamadı')
       }
     }
   }
 
-  // --- TASARIM KISMI (MANTINE İLE YENİLENDİ) ---
+  // --- TASARIM KISMI ---
   return (
     <Container size={420} my={40}>
       
@@ -73,7 +96,7 @@ function Register() {
       {/* Form Kartı */}
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
         <form onSubmit={handleRegister}>
-          <Stack gap="md"> {/* Elemanlar arasına otomatik boşluk bırakır */}
+          <Stack gap="md"> 
             
             <TextInput 
               label="Kullanıcı Adı" 
@@ -92,6 +115,8 @@ function Register() {
               value={formData.email} 
               onChange={handleChange} 
               required 
+              // YENİ: Hata varsa kutucuk kırmızı olur ve mesaj yazar
+              error={emailError} 
             />
 
             <PasswordInput 

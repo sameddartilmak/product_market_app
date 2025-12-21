@@ -9,7 +9,10 @@ const axiosClient = axios.create({
 
 axiosClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    // DÜZELTME 1: Token'ı artık sessionStorage'dan alıyoruz
+    // (Böylece tarayıcı kapanıp açıldığında silinmiş oluyor)
+    const token = sessionStorage.getItem('token');
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -25,6 +28,11 @@ axiosClient.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       console.log("Oturum süresi doldu veya yetkisiz giriş.");
+      
+      // DÜZELTME 2: 401 gelirse oturumu temizle ve yönlendir
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
+      window.location.href = '/login'; 
     }
     return Promise.reject(error);
   }

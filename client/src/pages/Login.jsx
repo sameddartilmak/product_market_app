@@ -1,5 +1,5 @@
-import { useState, useContext } from 'react'
-import axios from 'axios'
+import { useState, useContext, useEffect } from 'react'
+import axiosClient from '../api/axiosClient' // DÜZELTME: Global Client kullanıldı
 import { AuthContext } from '../context/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -21,17 +21,41 @@ import {
 function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  // YENİ: Beni Hatırla State'i
+  const [rememberMe, setRememberMe] = useState(false)
   
   const { login } = useContext(AuthContext)
   const navigate = useNavigate()
 
-  // --- MANTIK KISMI (AYNEN KORUNDU) ---
+  // --- 1. SAYFA AÇILINCA HAFIZAYI KONTROL ET ---
+  useEffect(() => {
+    const savedCreds = localStorage.getItem('remember_creds');
+    if (savedCreds) {
+        try {
+            // Bilgiler Base64 ile şifreli kaydedilmişti, şimdi çözüyoruz
+            const decoded = atob(savedCreds); 
+            const [savedUser, savedPass] = decoded.split(':');
+            
+            if (savedUser && savedPass) {
+                setUsername(savedUser);
+                setPassword(savedPass);
+                setRememberMe(true); // Kutucuğu da işaretli yap
+                // toast.info("Bilgileriniz hatırlandı, giriş yapmak için butona tıklayın.");
+            }
+        } catch (e) {
+            console.error("Hatırlanan veriler okunamadı", e);
+            localStorage.removeItem('remember_creds');
+        }
+    }
+  }, []);
+
+  // --- MANTIK KISMI ---
   const handleSubmit = async (e) => {
     e.preventDefault()
     
     try {
-      // API'ye istek atıyoruz
-      const res = await axios.post('http://127.0.0.1:5000/api/auth/login', {
+      // DÜZELTME: Uzun URL yerine axiosClient kullanıldı
+      const res = await axiosClient.post('/auth/login', {
         username: username,
         password: password
       })
@@ -40,34 +64,35 @@ function Login() {
       console.log("🔴 1. SUNUCUDAN GELEN TÜM VERİ:", res.data);
       
       if (!res.data.user) {
-          console.error("⛔ HATA: Sunucu 'user' objesini göndermedi! Sadece token geldi.");
+          console.error("⛔ HATA: Sunucu 'user' objesini göndermedi!");
           toast.error("Sunucu hatası: Kullanıcı bilgisi alınamadı.");
-          return; // İşlemi durdur
+          return; 
       }
-
-      console.log("🔴 2. KULLANICI ROLÜ:", res.data.user.role);
       // -------------------------------
 
       if (res.data.access_token) {
-          // Güvenli rol temizliği (Boşluk silme ve küçük harf yapma)
+          // --- 2. BENİ HATIRLA MANTIĞI ---
+          if (rememberMe) {
+              // Bilgileri basitçe şifreleyip (Base64) kaydet: "kullanici:sifre" formatında
+              const creds = btoa(`${username}:${password}`);
+              localStorage.setItem('remember_creds', creds);
+          } else {
+              // Eğer tik kaldırıldıysa hafızayı temizle
+              localStorage.removeItem('remember_creds');
+          }
+          // -------------------------------
+
           const serverRole = res.data.user.role || "";
           const safeRole = serverRole.toString().trim().toLowerCase();
-
-          console.log("🔴 3. İŞLENMİŞ ROL:", safeRole);
           
-          // CRITICAL FIX: Admin panelinin çalışması için bunu localStorage'a atıyoruz
           localStorage.setItem('role', safeRole);
 
-          // Context'i güncelle
           login(res.data.user, res.data.access_token)
           toast.success(`Hoşgeldin ${res.data.user.username}!`)
           
-          // YÖNLENDİRME KARARI
           if (safeRole === 'admin') {
-            console.log("✅ Admin tespit edildi -> /admin rotasına gidiliyor.");
             navigate('/admin');
           } else {
-            console.log("✅ Müşteri tespit edildi -> Ana sayfaya gidiliyor.");
             navigate('/'); 
           }
       }
@@ -78,7 +103,7 @@ function Login() {
     }
   }
 
-  // --- TASARIM KISMI (MANTINE İLE YENİLENDİ) ---
+  // --- TASARIM KISMI ---
   return (
     <Container size={420} my={40}>
       
@@ -93,7 +118,7 @@ function Login() {
         </Anchor>
       </Text>
 
-      {/* Kart Alanı (Gölge ve Kenarlık) */}
+      {/* Kart Alanı */}
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
         <form onSubmit={handleSubmit}>
             
@@ -115,7 +140,11 @@ function Login() {
             />
 
             <Group justify="space-between" mt="lg">
-                <Checkbox label="Beni Hatırla" />
+                <Checkbox 
+                    label="Beni Hatırla" 
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.currentTarget.checked)}
+                />
                 <Anchor component="button" size="sm" onClick={(e) => { e.preventDefault(); toast.info("Bu özellik yakında gelecek!"); }}>
                     Şifremi Unuttum?
                 </Anchor>
