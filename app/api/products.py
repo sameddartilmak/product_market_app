@@ -1,11 +1,12 @@
 import os
 from flask import Blueprint, request, jsonify
-from app.models import Product, ProductImage, User
+from app.models import Product, ProductImage, User ,Transaction
 from app import db
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_
 # Utils fonksiyonlarını import ediyoruz
-from app.utils import save_file, delete_file_from_url 
+from app.utils import save_file, delete_file_from_url
+from datetime import datetime, timedelta 
 
 products_bp = Blueprint('products', __name__)
 
@@ -195,3 +196,33 @@ def delete_product(product_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': 'Silme hatası.', 'error': str(e)}), 500
+    
+# --- 7. TAKVİM DOLULUK BİLGİSİ (Bunu dosyanın en altına ekle) ---
+@products_bp.route('/<int:product_id>/availability', methods=['GET'])
+def get_product_availability(product_id):
+    try:
+        # 1. Veritabanından o ürüne ait 'Transaction' kayıtlarını çek
+        # (Sadece onaylanmış veya beklemedeki kiralamaları alabilirsin, şimdilik hepsini alıyoruz)
+        rentals = Transaction.query.filter_by(product_id=product_id).all()
+        
+        booked_dates = []
+        
+        # 2. Her kiralama için tarih aralığını hesapla
+        for rental in rentals:
+            # start_date ve end_date'in boş olmadığından emin ol
+            if not rental.start_date or not rental.end_date:
+                continue
+            
+            # Başlangıçtan bitişe kadar döngü kur
+            current_date = rental.start_date
+            while current_date <= rental.end_date:
+                # 3. KRİTİK NOKTA: Tarihi string'e çevir (YYYY-AA-GG formatı)
+                booked_dates.append(current_date.strftime('%Y-%m-%d'))
+                current_date += timedelta(days=1)
+        
+        # 4. Listeyi JSON olarak döndür
+        return jsonify(booked_dates), 200
+
+    except Exception as e:
+        print(f"HATA DETAYI: {e}") 
+        return jsonify({'error': str(e)}), 500    

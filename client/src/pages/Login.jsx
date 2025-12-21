@@ -1,8 +1,9 @@
 import { useState, useContext, useEffect } from 'react'
-import axiosClient from '../api/axiosClient' // DÜZELTME: Global Client kullanıldı
+import axiosClient from '../api/axiosClient' 
 import { AuthContext } from '../context/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
+import Swal from 'sweetalert2' // YENİ: Hata mesajını bununla göstereceğiz
 
 // --- MANTINE IMPORTLARI ---
 import { 
@@ -21,8 +22,8 @@ import {
 function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  // YENİ: Beni Hatırla State'i
   const [rememberMe, setRememberMe] = useState(false)
+  const [loading, setLoading] = useState(false)
   
   const { login } = useContext(AuthContext)
   const navigate = useNavigate()
@@ -32,15 +33,13 @@ function Login() {
     const savedCreds = localStorage.getItem('remember_creds');
     if (savedCreds) {
         try {
-            // Bilgiler Base64 ile şifreli kaydedilmişti, şimdi çözüyoruz
             const decoded = atob(savedCreds); 
             const [savedUser, savedPass] = decoded.split(':');
             
             if (savedUser && savedPass) {
                 setUsername(savedUser);
                 setPassword(savedPass);
-                setRememberMe(true); // Kutucuğu da işaretli yap
-                // toast.info("Bilgileriniz hatırlandı, giriş yapmak için butona tıklayın.");
+                setRememberMe(true);
             }
         } catch (e) {
             console.error("Hatırlanan veriler okunamadı", e);
@@ -51,44 +50,33 @@ function Login() {
 
   // --- MANTIK KISMI ---
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    
+    e.preventDefault() // Sayfanın yenilenmesini engeller
+    setLoading(true);
+
     try {
-      // DÜZELTME: Uzun URL yerine axiosClient kullanıldı
+      // 1. İsteği Gönder
       const res = await axiosClient.post('/auth/login', {
         username: username,
         password: password
       })
 
-      // --- DEDEKTİF MODU BAŞLANGIÇ ---
-      console.log("🔴 1. SUNUCUDAN GELEN TÜM VERİ:", res.data);
-      
-      if (!res.data.user) {
-          console.error("⛔ HATA: Sunucu 'user' objesini göndermedi!");
-          toast.error("Sunucu hatası: Kullanıcı bilgisi alınamadı.");
-          return; 
-      }
-      // -------------------------------
-
+      // 2. Başarılıysa İşlemleri Yap
       if (res.data.access_token) {
-          // --- 2. BENİ HATIRLA MANTIĞI ---
+          // --- BENİ HATIRLA ---
           if (rememberMe) {
-              // Bilgileri basitçe şifreleyip (Base64) kaydet: "kullanici:sifre" formatında
               const creds = btoa(`${username}:${password}`);
               localStorage.setItem('remember_creds', creds);
           } else {
-              // Eğer tik kaldırıldıysa hafızayı temizle
               localStorage.removeItem('remember_creds');
           }
-          // -------------------------------
 
+          // Rolü güvenli hale getir
           const serverRole = res.data.user.role || "";
           const safeRole = serverRole.toString().trim().toLowerCase();
           
-          localStorage.setItem('role', safeRole);
+          const userWithRole = { ...res.data.user, role: safeRole };
 
-          login(res.data.user, res.data.access_token)
-          toast.success(`Hoşgeldin ${res.data.user.username}!`)
+          login(userWithRole, res.data.access_token)
           
           if (safeRole === 'admin') {
             navigate('/admin');
@@ -98,16 +86,41 @@ function Login() {
       }
 
     } catch (error) {
-      console.error("Giriş Hatası:", error);
-      toast.error(error.response?.data?.message || 'Giriş başarısız!')
+      console.error("Giriş Hatası Detayı:", error);
+      
+      // Hata Mesajını Belirle
+      let errorMessage = 'Kullanıcı adı veya şifre hatalı!';
+      
+      if (error.response) {
+          // Sunucudan gelen mesaj varsa onu kullan
+          errorMessage = error.response.data.message || errorMessage;
+          
+          // Eğer sunucu 500 hatası verdiyse
+          if (error.response.status === 500) {
+              errorMessage = "Sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin.";
+          }
+      } else if (error.request) {
+          // Sunucuya hiç ulaşılamadıysa
+          errorMessage = "Sunucuya bağlanılamadı. İnternetinizi kontrol edin.";
+      }
+
+      // YENİ: SweetAlert ile ekrana bas (Gözden kaçması imkansız)
+      Swal.fire({
+        icon: 'error',
+        title: 'Giriş Başarısız',
+        text: errorMessage,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Tamam'
+      });
+      
+    } finally {
+      setLoading(false);
     }
   }
 
   // --- TASARIM KISMI ---
   return (
     <Container size={420} my={40}>
-      
-      {/* Başlık Alanı */}
       <Title ta="center" order={2}>
         Tekrar Hoşgeldiniz! 👋
       </Title>
@@ -118,7 +131,6 @@ function Login() {
         </Anchor>
       </Text>
 
-      {/* Kart Alanı */}
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
         <form onSubmit={handleSubmit}>
             
@@ -150,7 +162,14 @@ function Login() {
                 </Anchor>
             </Group>
 
-            <Button fullWidth mt="xl" type="submit" color="blue">
+            <Button 
+                fullWidth 
+                mt="xl" 
+                type="submit" 
+                color="blue" 
+                loading={loading}
+                disabled={loading}
+            >
                 Giriş Yap 🚀
             </Button>
         </form>

@@ -1,6 +1,8 @@
 import { Routes, Route, Link } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+// App.jsx dosyasının en üstüne ekle:
+import IncomingRequests from './pages/IncomingRequests';
 
 // Mantine Layout Bileşenleri
 import { Box, Container, Title, Text, Button, Center, Stack } from '@mantine/core';
@@ -40,6 +42,7 @@ function App() {
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/requests" element={<IncomingRequests />} />
           
           <Route path="*" element={
             <Container>

@@ -11,12 +11,10 @@ export const AuthProvider = ({ children }) => {
 
   // --- Mesaj Sayısını Güncelleme ---
   const updateUnreadCount = async () => {
-    // DEĞİŞİKLİK: Token kontrolünü sessionStorage'dan yap (Oturum açık mı?)
     if (!sessionStorage.getItem('token')) return;
 
     try {
         const res = await axiosClient.get('/messages/conversations');
-        // Backend 'is_unread' göndermiyorsa şimdilik liste uzunluğunu alıyoruz
         setUnreadCount(res.data.length); 
     } catch (error) {
         console.error("Mesaj sayısı güncellenemedi:", error);
@@ -27,18 +25,24 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkUserLoggedIn = () => {
       try {
-        // DEĞİŞİKLİK: Verileri sessionStorage'dan oku
-        // (Tarayıcı kapatılıp açıldıysa burası boş gelecek ve oturum açılmayacak)
         const storedUser = sessionStorage.getItem('user')
         const storedToken = sessionStorage.getItem('token')
+        // Role bilgisini de kontrol et
+        const storedRole = sessionStorage.getItem('role')
 
         if (storedUser && storedToken) {
-          setUser(JSON.parse(storedUser))
+          const parsedUser = JSON.parse(storedUser);
+          // Eğer user objesinin içinde role yoksa, storedRole'dan ekle
+          if (!parsedUser.role && storedRole) {
+            parsedUser.role = storedRole;
+          }
+          setUser(parsedUser)
         }
       } catch (error) {
         console.error("❌ Auth verisi okunurken hata:", error)
         sessionStorage.removeItem('user')
         sessionStorage.removeItem('token')
+        sessionStorage.removeItem('role')
       } finally {
         setLoading(false)
       }
@@ -60,10 +64,14 @@ export const AuthProvider = ({ children }) => {
   const login = (userData, token) => {
     setUser(userData)
     
-    // DEĞİŞİKLİK: Token ve User'ı sessionStorage'a kaydet (Geçici Hafıza)
-    // Böylece tarayıcı kapanınca bu bilgiler silinir.
+    // DEĞİŞİKLİK: Token, User ve ROLE sessionStorage'a kaydediliyor
     sessionStorage.setItem('token', token) 
     sessionStorage.setItem('user', JSON.stringify(userData))
+    
+    // User objesinden role'ü alıp ayrıca kaydediyoruz (Admin paneli için kritik)
+    if (userData.role) {
+        sessionStorage.setItem('role', userData.role);
+    }
     
     updateUnreadCount(); 
 
@@ -75,11 +83,10 @@ export const AuthProvider = ({ children }) => {
     setUser(null)
     setUnreadCount(0)
     
-    // DEĞİŞİKLİK: sessionStorage'ı temizle
+    // DEĞİŞİKLİK: Tüm session verilerini temizle
     sessionStorage.removeItem('token')
     sessionStorage.removeItem('user')
-    
-    // NOT: localStorage'daki 'remember_creds' silinmiyor, böylece bilgiler inputlarda kalıyor.
+    sessionStorage.removeItem('role') // Role silindi
     
     toast.info("Başarıyla çıkış yapıldı. Görüşmek üzere! 🌟")
     
@@ -95,7 +102,6 @@ export const AuthProvider = ({ children }) => {
     const updatedUser = { ...user, ...newUserData }
     
     setUser(updatedUser)
-    // DEĞİŞİKLİK: sessionStorage güncelle
     sessionStorage.setItem('user', JSON.stringify(updatedUser))
     
     toast.success("Profil bilgilerin güncellendi! ✅")

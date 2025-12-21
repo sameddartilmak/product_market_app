@@ -112,9 +112,18 @@ function Navbar() {
                     <Menu.Label>Hesap</Menu.Label>
                     
                     {user.role !== 'admin' && (
+                      <>
                         <Menu.Item component={Link} to="/profile">
-                          👤 Profilim
+                            👤 Profilim
                         </Menu.Item>
+
+                        <Menu.Item component={Link} to="/requests">
+                          📥 Gelen Talepler <Text span c="dimmed" size="xs" ml={5}>(Kiralama)</Text>
+                        </Menu.Item>        
+                        <Menu.Item component={Link} to="/swaps">
+                             🔄 Takaslarım <Text span c="dimmed" size="xs" ml={5}>(Takas)</Text>
+                        </Menu.Item>
+                      </>
                     )}
                     
                     <Menu.Divider />
