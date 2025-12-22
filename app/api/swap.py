@@ -5,6 +5,16 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 swap_bp = Blueprint('swap', __name__)
 
+# --- YARDIMCI FONKSİYON: Status Değerini Güvenli Al ---
+def get_status_str(status):
+    """
+    Status bazen Enum objesi, bazen String olarak gelir.
+    Bu fonksiyon her iki durumu da yönetir ve düz string döndürür.
+    """
+    if hasattr(status, 'value'):
+        return status.value
+    return str(status)
+
 # --- 1. TAKAS TEKLİFİ YAP ---
 @swap_bp.route('/offer', methods=['POST'])
 @jwt_required()
@@ -27,12 +37,9 @@ def make_swap_offer():
     if not target_product:
         return jsonify({'message': 'Teklif yapılmak istenen ürün bulunamadı.'}), 404
     
-    # Products.py 'status' kullanıyor, is_active değil.
     if target_product.status != 'available':
         return jsonify({'message': 'Bu ürün artık müsait değil.'}), 400
     
-    # Sadece 'swap' veya 'sell_swap' (hem satılık hem takaslık) olanlara teklif yapılabilir
-    # Eğer sadece 'swap' ise:
     if target_product.listing_type == 'sale':
         return jsonify({'message': 'Bu ürün takasa açık değil, sadece satılık.'}), 400
 
@@ -47,7 +54,7 @@ def make_swap_offer():
     if offered_product.status != 'available':
         return jsonify({'message': 'Teklif ettiğiniz ürün müsait değil (Satılmış veya başka işlemde).'}), 400
 
-    # C) Kendine teklif atma
+    # C) Kendine teklif atma engeli
     if target_product.owner_id == current_user_id:
         return jsonify({'message': 'Kendi ürününüze takas teklifi yapamazsınız.'}), 400
 
@@ -63,10 +70,11 @@ def make_swap_offer():
     db.session.add(new_offer)
     db.session.commit()
 
+    # --- DÜZELTME BURADA YAPILDI ---
     return jsonify({
         'message': 'Takas teklifi başarıyla gönderildi.',
         'offer_id': new_offer.id,
-        'status': new_offer.status.value
+        'status': get_status_str(new_offer.status) # Güvenli fonksiyon kullanıldı
     }), 201
 
 
@@ -86,15 +94,14 @@ def get_offers_for_my_product(product_id):
     
     output = []
     for offer in offers:
-        offered_prod = offer.offered_product # İlişkisel veri
+        offered_prod = offer.offered_product
 
         offer_data = {
             'offer_id': offer.id,
-            'status': offer.status.value,
+            'status': get_status_str(offer.status), # Düzeltildi
             'message': offer.message,
             'created_at': offer.created_at,
             'offerer_username': offer.offerer.username,
-            # Frontend'de resim göstermek için image_url ekledik
             'offered_product': {
                 'product_id': offered_prod.id,
                 'title': offered_prod.title,
@@ -125,20 +132,18 @@ def respond_to_offer(offer_id):
     if target_product.owner_id != current_user_id:
         return jsonify({'message': 'Bu teklifi yanıtlama yetkiniz yok.'}), 403
 
-    if offer.status != OfferStatus.PENDING:
+    # Status kontrolü (String veya Enum olabilir, güvenli kontrol yapıyoruz)
+    current_status = get_status_str(offer.status)
+    if current_status != 'pending':
         return jsonify({'message': 'Bu teklif zaten yanıtlanmış.'}), 400
 
     if action == 'accept':
         offer.status = OfferStatus.ACCEPTED
         
-        # MANTIK DÜZELTME:
-        # Takas kabul edilince HER İKİ ürün de "Satıldı/Takaslandı" olmalı.
+        # Takas kabul edilince HER İKİ ürün de "Satıldı/Takaslandı" olur.
         target_product.status = 'swapped' 
         offer.offered_product.status = 'swapped'
         
-        # Opsiyonel: Bu ürünlere gelen diğer bekleyen teklifleri otomatik reddetmek gerekebilir.
-        # Şimdilik basit bırakıyoruz.
-
         db.session.commit()
         return jsonify({'message': 'Takas kabul edildi! İki ürün de yayından kaldırıldı.', 'status': 'accepted'}), 200
 
@@ -163,7 +168,7 @@ def get_my_sent_offers():
         
         offer_data = {
             'offer_id': offer.id,
-            'status': offer.status.value,
+            'status': get_status_str(offer.status), # Düzeltildi
             'date_offered': offer.created_at,
             'my_offered_product': { 
                 'title': offer.offered_product.title,
@@ -172,7 +177,7 @@ def get_my_sent_offers():
             'target_product': { 
                 'product_id': target_prod.id,
                 'title': target_prod.title,
-                'image_url': target_prod.image_url, # Resim eklendi
+                'image_url': target_prod.image_url,
                 'owner_username': target_prod.owner.username
             }
         }

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import axiosClient from '../api/axiosClient' 
 import { toast } from 'react-toastify'
 import MessageModal from '../components/MessageModal'
+import SwapOfferModal from '../components/SwapOfferModal' // YENİ EKLENDİ
 import { AuthContext } from '../context/AuthContext'
 import Swal from 'sweetalert2'
 
@@ -18,7 +19,11 @@ function ProductDetail() {
 
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  
+  // Modallar
+  const [isModalOpen, setIsModalOpen] = useState(false) // Mesaj Modalı
+  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false) // YENİ: Takas Modalı
+  
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   // --- KİRALAMA STATE ---
@@ -45,11 +50,9 @@ function ProductDetail() {
   const fetchAvailability = async () => {
     try {
         const res = await axiosClient.get(`/products/${id}/availability`);
-        // Backend: ['2025-12-22', '2025-12-23']
         
         const timestamps = res.data.map(dateStr => {
             const [year, month, day] = dateStr.split('-').map(Number);
-            // Yerel saatte gece yarısı 00:00:00 oluşturuyoruz
             return new Date(year, month - 1, day).getTime();
         });
 
@@ -68,37 +71,27 @@ function ProductDetail() {
 
 
   // --- YARDIMCI: HER TÜRLÜ TARİHİ STANDART DATE OBJESİNE ÇEVİRİR ---
-  // Bu fonksiyon hatayı önleyen kilit noktadır.
   const getNativeDate = (dateInput) => {
       if (!dateInput) return null;
-      // Eğer Day.js objesi ise .toDate() fonksiyonu vardır
       if (typeof dateInput.toDate === 'function') {
           return dateInput.toDate();
       }
-      // Zaten Date objesi ise
       if (dateInput instanceof Date) {
           return dateInput;
       }
-      // String veya timestamp ise
       return new Date(dateInput);
   }
 
   // --- TAKVİMDE GÜNLERİ ENGELLEME ---
   const isDateDisabled = (dateInput) => {
-    // 1. Önce veriyi güvenli Date objesine çevir
     const date = getNativeDate(dateInput);
-    if (!date || isNaN(date.getTime())) return false; // Hatalı tarihse geç
+    if (!date || isNaN(date.getTime())) return false; 
 
-    // 2. Geçmiş tarihleri engelle
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (date < today) return true;
 
-    // 3. Dolu tarihleri engelle
-    // Takvimdeki günün Timestamp değerini (Gece yarısı 00:00) buluyoruz
     const checkTime = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-
-    // Listede varsa engelle
     return busyTimestamps.includes(checkTime);
   };
 
@@ -106,7 +99,6 @@ function ProductDetail() {
   // --- HESAPLAMA VE ÇAKIŞMA KONTROLÜ ---
   useEffect(() => {
     const [rawStart, rawEnd] = dateRange;
-    // Gelen tarihleri de güvenli hale getir
     const start = getNativeDate(rawStart);
     const end = getNativeDate(rawEnd);
 
@@ -114,7 +106,6 @@ function ProductDetail() {
         const diffTime = Math.abs(end - start);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
 
-        // Seçilen aralıkta yasaklı gün var mı?
         let isConflict = false;
         let currentDate = new Date(start);
         
@@ -214,7 +205,6 @@ function ProductDetail() {
     try {
         Swal.fire({ title: 'İşleniyor...', didOpen: () => Swal.showLoading() })
 
-        // Backend formatı (YYYY-MM-DD)
         const formatDate = (d) => {
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -327,9 +317,7 @@ function ProductDetail() {
                                       value={dateRange}
                                       onChange={setDateRange}
                                       minDate={new Date()} 
-                                      
                                       excludeDate={isDateDisabled} 
-                                      
                                       locale="tr"
                                       clearable
                                       numberOfColumns={1}
@@ -348,6 +336,13 @@ function ProductDetail() {
                             ) : (
                                 <button onClick={handleBuy} style={styles.btnPrimaryGreen}>Güvenle Satın Al</button>
                             )}
+                            
+                            {/* --- YENİ EKLENEN KISIM: TAKAS BUTONU --- */}
+                            <button onClick={() => setIsSwapModalOpen(true)} style={styles.btnSwap}>
+                                🔄 Takas Teklif Et
+                            </button>
+                            {/* -------------------------------------- */}
+
                             <button onClick={() => setIsModalOpen(true)} style={styles.btnSecondary}>💬 Satıcıya Mesaj At</button>
                         </>
                     )}
@@ -355,12 +350,24 @@ function ProductDetail() {
             </div>
         </div>
 
+        {/* Mesaj Modalı */}
         {isModalOpen && product.owner && (
             <MessageModal 
                 isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} 
                 receiverId={product.owner.id} receiverName={product.owner.username} productId={product.id}
             />
         )}
+
+        {/* --- YENİ EKLENEN KISIM: TAKAS TEKLİF MODALI --- */}
+        {isSwapModalOpen && (
+            <SwapOfferModal 
+                isOpen={isSwapModalOpen} 
+                onClose={() => setIsSwapModalOpen(false)} 
+                targetProduct={product} 
+            />
+        )}
+        {/* ----------------------------------------------- */}
+
       </div>
     </div>
   )
@@ -402,6 +409,7 @@ const styles = {
   btnPrimaryGreen: { width: '100%', padding: '14px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '10px', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s', marginBottom: '10px' },
   btnPrimaryOrange: { width: '100%', padding: '14px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '10px', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' },
   btnSecondary: { width: '100%', padding: '14px', backgroundColor: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '10px', fontSize: '1rem', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s', marginTop: '10px' },
+  btnSwap: { width: '100%', padding: '14px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '10px', fontSize: '1rem', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s', marginTop: '10px' },
   alertBoxRed: { backgroundColor: '#fef2f2', color: '#b91c1c', padding: '15px', borderRadius: '8px', textAlign: 'center', fontWeight: '600' },
   alertBoxGray: { backgroundColor: '#f3f4f6', color: '#4b5563', padding: '15px', borderRadius: '8px', textAlign: 'center', fontWeight: '600' }
 }
