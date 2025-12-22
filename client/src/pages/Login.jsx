@@ -62,6 +62,9 @@ function Login() {
 
       // 2. Başarılıysa İşlemleri Yap
       if (res.data.access_token) {
+
+        localStorage.setItem('token', res.data.access_token);
+        
           // --- BENİ HATIRLA ---
           if (rememberMe) {
               const creds = btoa(`${username}:${password}`);

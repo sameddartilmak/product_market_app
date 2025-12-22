@@ -120,8 +120,21 @@ def rent_product():
 
     if product.owner_id == current_user_id:
         return jsonify({'message': 'Kendi ürününüzü kiralayamazsınız.'}), 400
+
+    # --- D) YENİ EKLENEN KISIM: ÇAKIŞMA KONTROLÜ (Oluştururken) ---
+    # Eğer bu tarihlerde ONAYLANMIŞ (APPROVED) başka bir işlem varsa izin verme.
+    conflicting_approved = Transaction.query.filter(
+        Transaction.product_id == product_id,
+        Transaction.status == 'APPROVED', # Sadece onaylılar engeldir
+        Transaction.start_date <= end_date,
+        Transaction.end_date >= start_date
+    ).first()
+
+    if conflicting_approved:
+        return jsonify({'message': 'Bu tarihlerde ürün zaten kiralanmış (Onaylı Rezervasyon). Lütfen başka tarih seçin.'}), 400
+    # -------------------------------------------------------------
     
-    # D) Fiyat Hesaplama
+    # E) Fiyat Hesaplama
     daily_price = product.price 
     num_days = (end_date - start_date).days
     
@@ -129,7 +142,7 @@ def rent_product():
     
     total_price = num_days * daily_price
     
-    # E) İşlemi Kaydet
+    # F) İşlemi Kaydet
     try:
         new_transaction = Transaction(
             product_id=product_id,
@@ -157,37 +170,36 @@ def rent_product():
         return jsonify({'message': 'Kiralama başarısız.', 'error': str(e)}), 500
 
 
-# --- 3. (YENİ) GELEN TALEPLERİ LİSTELEME ---
-# Frontend'de "Gelen Talepler" sayfasında bu endpointi çağırmalısın.
+# --- 3. GELEN TALEPLERİ LİSTELEME ---
 @transactions_bp.route('/incoming', methods=['GET'])
 @cross_origin()
 @jwt_required()
 def get_incoming_requests():
     current_user_id = int(get_jwt_identity())
     
-    # --- DEBUG BAŞLANGIÇ (Terminale yazdırır) ---
-    print(f"\n--- DEBUG: Gelen Talepler İsteği ---")
-    print(f"İstek Yapan Kullanıcı ID: {current_user_id}")
+    # Debug için
+    print(f"Gelen Talepler - Kullanıcı ID: {current_user_id}")
     
     transactions = Transaction.query.filter_by(seller_id=current_user_id).order_by(Transaction.id.desc()).all()
     
-    print(f"Veritabanından Bulunan Kayıt Sayısı: {len(transactions)}")
-    if len(transactions) == 0:
-        print("UYARI: Bu kullanıcıya ait satış/kiralama işlemi bulunamadı.")
-        print("İPUCU: Doğru satıcı hesabıyla giriş yaptığından emin ol.")
-    # --- DEBUG BİTİŞ ---
-
     results = []
     for t in transactions:
         product = Product.query.get(t.product_id)
         buyer = User.query.get(t.buyer_id)
         
+        # --- HATA BURADAYDI, image_url OLARAK GÜNCELLENDİ ---
+        product_image = None
+        if product:
+            # Modelinde 'image_url' var, 'image_file' YOK.
+            product_image = getattr(product, 'image_url', None)
+        # ----------------------------------------------------
+
         results.append({
             'id': t.id,
             'product_title': product.title if product else 'Silinmiş Ürün',
-            'product_image': product.image_file if product else None, # Frontend'de resim göstermek için bunu eklemeni öneririm
+            'product_image': product_image,  # Düzeltilmiş değişkeni kullanıyoruz
             'buyer_name': buyer.username if buyer else 'Bilinmeyen Kullanıcı',
-            'buyer_username': buyer.username if buyer else 'Bilinmeyen', # Frontend bazen bu ismi arıyor olabilir
+            'buyer_username': buyer.username if buyer else 'Bilinmeyen',
             'transaction_type': t.transaction_type, 
             'status': t.status, 
             'price': float(t.price),
@@ -199,8 +211,7 @@ def get_incoming_requests():
     return jsonify(results), 200
 
 
-# --- 4. (YENİ) TALEP ONAYLA / REDDET ---
-# Satıcı "Onayla" veya "Reddet" butonuna basınca burası çalışacak.
+# --- 4. TALEP ONAYLA / REDDET ---
 @transactions_bp.route('/<int:transaction_id>/respond', methods=['POST'])
 @cross_origin()
 @jwt_required()
@@ -216,15 +227,51 @@ def respond_to_request(transaction_id):
         return jsonify({'message': 'Bu işlem için yetkiniz yok.'}), 403
 
     if action == 'approve':
-        transaction.status = 'APPROVED'
-        # Eğer kiralama onaylanırsa, o tarihlerde ürünü 'rented' çekebilirsin veya
-        # sadece transaction status üzerinden yönetebilirsin.
-        # Basitlik için sadece status güncelliyoruz:
+        # --- YENİ EKLENEN KISIM: OTOMATİK REDDETME MANTIĞI ---
         
+        # 1. Önce tekrar kontrol et: Bu tarihlerde ONAYLANMIŞ başka işlem var mı?
+        # (Aynı anda iki admin farklı tarayıcıdan onaylamaya çalışırsa diye)
+        overlap_check = Transaction.query.filter(
+            Transaction.product_id == transaction.product_id,
+            Transaction.id != transaction.id,
+            Transaction.status == 'APPROVED',
+            Transaction.start_date <= transaction.end_date,
+            Transaction.end_date >= transaction.start_date
+        ).first()
+
+        if overlap_check:
+            return jsonify({'message': 'Hata: Bu tarihler için başka bir işlem az önce onaylanmış.'}), 409
+
+        # 2. İşlemi Onayla
+        transaction.status = 'APPROVED'
+
+        # 3. Çakışan diğer "PENDING" (Bekleyen) talepleri bul
+        conflicting_pending = Transaction.query.filter(
+            Transaction.product_id == transaction.product_id,
+            Transaction.id != transaction.id,       # Kendisi hariç
+            Transaction.status == 'PENDING',        # Sadece bekleyenler
+            Transaction.start_date <= transaction.end_date, # Çakışma mantığı
+            Transaction.end_date >= transaction.start_date
+        ).all()
+
+        # 4. Hepsini REDDET
+        count_rejected = 0
+        for conflict in conflicting_pending:
+            conflict.status = 'REJECTED'
+            count_rejected += 1
+            print(f"Otomatik Reddedilen Talep ID: {conflict.id}")
+        
+        # -----------------------------------------------------
+
     elif action == 'reject':
         transaction.status = 'REJECTED'
     else:
         return jsonify({'message': 'Geçersiz işlem.'}), 400
 
     db.session.commit()
-    return jsonify({'message': f'Talep {action} edildi.', 'new_status': transaction.status}), 200
+    
+    msg = f"Talep {action} edildi."
+    if action == 'approve' and count_rejected > 0:
+        msg += f" (Çakışan {count_rejected} diğer talep otomatik reddedildi.)"
+
+    return jsonify({'message': msg, 'new_status': transaction.status}), 200

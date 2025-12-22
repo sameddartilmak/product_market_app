@@ -201,28 +201,25 @@ def delete_product(product_id):
 @products_bp.route('/<int:product_id>/availability', methods=['GET'])
 def get_product_availability(product_id):
     try:
-        # 1. Veritabanından o ürüne ait 'Transaction' kayıtlarını çek
-        # (Sadece onaylanmış veya beklemedeki kiralamaları alabilirsin, şimdilik hepsini alıyoruz)
-        rentals = Transaction.query.filter_by(product_id=product_id).all()
+        # --- DÜZELTİLEN KISIM ---
+        # Sadece 'APPROVED' (Onaylı) olanları çekiyoruz.
+        # Eğer 'filter_by' kullanıyorsan parametre olarak geçebilirsin.
+        rentals = Transaction.query.filter_by(product_id=product_id, status='APPROVED').all()
+        # ------------------------
         
         booked_dates = []
         
-        # 2. Her kiralama için tarih aralığını hesapla
         for rental in rentals:
-            # start_date ve end_date'in boş olmadığından emin ol
             if not rental.start_date or not rental.end_date:
                 continue
             
-            # Başlangıçtan bitişe kadar döngü kur
             current_date = rental.start_date
             while current_date <= rental.end_date:
-                # 3. KRİTİK NOKTA: Tarihi string'e çevir (YYYY-AA-GG formatı)
                 booked_dates.append(current_date.strftime('%Y-%m-%d'))
                 current_date += timedelta(days=1)
         
-        # 4. Listeyi JSON olarak döndür
         return jsonify(booked_dates), 200
 
     except Exception as e:
         print(f"HATA DETAYI: {e}") 
-        return jsonify({'error': str(e)}), 500    
+        return jsonify({'error': str(e)}), 500

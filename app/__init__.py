@@ -28,8 +28,13 @@ def create_app(config_class=Config):
         
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-    # CORS Ayarları (Tüm originlere izin verir)
-    CORS(app, resources={r"/*": {"origins": "*"}})
+    # --- DÜZELTİLEN KISIM BURASI ---
+    # CORS Ayarları: Authorization başlığına ve POST metoduna açıkça izin veriyoruz.
+    # Bu olmadan React token gönderemez.
+    CORS(app, resources={r"/*": {"origins": "*"}}, 
+         allow_headers=["Content-Type", "Authorization"], 
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+    # -------------------------------
 
     # Eklentileri uygulama ile ilişkilendiriyoruz
     db.init_app(app)
@@ -38,8 +43,7 @@ def create_app(config_class=Config):
     jwt.init_app(app)
 
     # --- Blueprint Kayıtları ---
-    # Importları tutarlı hale getirdik (hepsi relative import)
-
+    
     # 1. Auth Blueprint
     from .api.auth import auth_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -70,7 +74,6 @@ def create_app(config_class=Config):
 def create_upload_folders(app):
     """Resimlerin yükleneceği klasörleri ve alt klasörleri oluşturur"""
     base = app.config['UPLOAD_FOLDER']
-    # Alt klasörleri de oluşturuyoruz ki düzenli olsun
     subfolders = ['products', 'profiles', 'others']
     
     if not os.path.exists(base):
@@ -80,4 +83,3 @@ def create_upload_folders(app):
         path = os.path.join(base, sub)
         if not os.path.exists(path):
             os.makedirs(path)
-            

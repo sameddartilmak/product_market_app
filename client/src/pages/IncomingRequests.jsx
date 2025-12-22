@@ -54,7 +54,7 @@ function IncomingRequests() {
             toast.success(`Talep ${status === 'approved' ? 'onaylandı' : 'reddedildi'}.`);
             
             // Listeyi güncelle: İşlem yapılanı listeden çıkar
-            setRequests(prev => prev.filter(req => req.id !== id));
+            fetchRequests();
             
         } catch (error) {
             console.error(error);

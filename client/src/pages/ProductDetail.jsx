@@ -1,6 +1,6 @@
 import { useEffect, useState, useContext } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import axiosClient from '../api/axiosClient' // DÜZELTME: axiosClient kullanıldı
+import axiosClient from '../api/axiosClient' 
 import { toast } from 'react-toastify'
 import MessageModal from '../components/MessageModal'
 import { AuthContext } from '../context/AuthContext'
@@ -22,13 +22,12 @@ function ProductDetail() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   // --- KİRALAMA STATE ---
-  // Mantine [start, end] array döner
   const [dateRange, setDateRange] = useState([null, null]); 
   const [rentTotal, setRentTotal] = useState(0)
   const [rentDays, setRentDays] = useState(0)
   
-  // Backend'den gelecek dolu günler
-  const [busyDates, setBusyDates] = useState([]); 
+  // Backend'den gelecek dolu günlerin Zaman Damgaları (Timestamp)
+  const [busyTimestamps, setBusyTimestamps] = useState([]); 
 
   // --- 1. Ürün Bilgilerini Çek ---
   const fetchProduct = async () => {
@@ -42,15 +41,21 @@ function ProductDetail() {
     }
   }
 
-  // --- 2. Dolu Günleri Çek ---
+  // --- 2. Dolu Günleri Çek ve Sayısal Veriye Çevir ---
   const fetchAvailability = async () => {
     try {
         const res = await axiosClient.get(`/products/${id}/availability`);
-        const parsedDates = res.data.map(range => ({
-            start: new Date(range.start),
-            end: new Date(range.end)
-        }));
-        setBusyDates(parsedDates);
+        // Backend: ['2025-12-22', '2025-12-23']
+        
+        const timestamps = res.data.map(dateStr => {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            // Yerel saatte gece yarısı 00:00:00 oluşturuyoruz
+            return new Date(year, month - 1, day).getTime();
+        });
+
+        console.log("Dolu Tarihler (Timestamp):", timestamps);
+        setBusyTimestamps(timestamps);
+
     } catch (error) {
         console.error("Takvim verisi alınamadı", error);
     }
@@ -61,23 +66,72 @@ function ProductDetail() {
     fetchAvailability(); 
   }, [id])
 
-  // --- HESAPLAMA ---
+
+  // --- YARDIMCI: HER TÜRLÜ TARİHİ STANDART DATE OBJESİNE ÇEVİRİR ---
+  // Bu fonksiyon hatayı önleyen kilit noktadır.
+  const getNativeDate = (dateInput) => {
+      if (!dateInput) return null;
+      // Eğer Day.js objesi ise .toDate() fonksiyonu vardır
+      if (typeof dateInput.toDate === 'function') {
+          return dateInput.toDate();
+      }
+      // Zaten Date objesi ise
+      if (dateInput instanceof Date) {
+          return dateInput;
+      }
+      // String veya timestamp ise
+      return new Date(dateInput);
+  }
+
+  // --- TAKVİMDE GÜNLERİ ENGELLEME ---
+  const isDateDisabled = (dateInput) => {
+    // 1. Önce veriyi güvenli Date objesine çevir
+    const date = getNativeDate(dateInput);
+    if (!date || isNaN(date.getTime())) return false; // Hatalı tarihse geç
+
+    // 2. Geçmiş tarihleri engelle
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (date < today) return true;
+
+    // 3. Dolu tarihleri engelle
+    // Takvimdeki günün Timestamp değerini (Gece yarısı 00:00) buluyoruz
+    const checkTime = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+    // Listede varsa engelle
+    return busyTimestamps.includes(checkTime);
+  };
+
+
+  // --- HESAPLAMA VE ÇAKIŞMA KONTROLÜ ---
   useEffect(() => {
-    const [start, end] = dateRange;
+    const [rawStart, rawEnd] = dateRange;
+    // Gelen tarihleri de güvenli hale getir
+    const start = getNativeDate(rawStart);
+    const end = getNativeDate(rawEnd);
 
     if (start && end && product) {
         const diffTime = Math.abs(end - start);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
 
-        // Çakışma Kontrolü
-        const isConflict = busyDates.some(busy => {
-            return (start <= busy.end && end >= busy.start);
-        });
+        // Seçilen aralıkta yasaklı gün var mı?
+        let isConflict = false;
+        let currentDate = new Date(start);
+        
+        while (currentDate <= end) {
+            const currentTime = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()).getTime();
+            
+            if (busyTimestamps.includes(currentTime)) {
+                isConflict = true;
+                break;
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
 
         if (isConflict) {
             setRentDays(0);
             setRentTotal(0);
-            toast.error("Seçtiğiniz tarih aralığında ürün müsait değil!");
+            toast.error("Seçtiğiniz aralıkta dolu günler var.");
             setDateRange([null, null]); 
         } else {
             setRentDays(diffDays);
@@ -87,24 +141,8 @@ function ProductDetail() {
         setRentDays(0);
         setRentTotal(0);
     }
-  }, [dateRange, product, busyDates])
+  }, [dateRange, product, busyTimestamps])
 
-  // --- TAKVİMDE GÜNLERİ ENGELLEME ---
-  const isDateDisabled = (date) => {
-    // 1. Geçmiş tarihleri engelle
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (date < today) return true;
-
-    // 2. Dolu tarihleri engelle
-    return busyDates.some(busy => {
-        const start = new Date(busy.start);
-        start.setHours(0,0,0,0);
-        const end = new Date(busy.end);
-        end.setHours(23,59,59,999);
-        return date >= start && date <= end;
-    });
-  };
 
   // --- SATIN ALMA İŞLEMİ ---
   const handleBuy = async () => {
@@ -140,18 +178,16 @@ function ProductDetail() {
         return
     }
 
-    const [start, end] = dateRange;
+    const [rawStart, rawEnd] = dateRange;
+    const start = getNativeDate(rawStart);
+    const end = getNativeDate(rawEnd);
     
     if (!start || !end) {
         toast.info('Lütfen başlangıç ve bitiş tarihlerini seçin.');
         return
     }
 
-    // Tarihleri Date objesine çevir (Güvenlik)
-    const startDateObj = new Date(start);
-    const endDateObj = new Date(end);
-
-    const diffTime = Math.abs(endDateObj - startDateObj);
+    const diffTime = Math.abs(end - start);
     const calculatedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
     const calculatedTotal = calculatedDays * product.price;
 
@@ -160,7 +196,7 @@ function ProductDetail() {
         html: `
             <div style="text-align: left; font-size: 1rem;">
                 <p><strong>Ürün:</strong> ${product.title}</p>
-                <p><strong>Tarihler:</strong> ${startDateObj.toLocaleDateString('tr-TR')} - ${endDateObj.toLocaleDateString('tr-TR')}</p>
+                <p><strong>Tarihler:</strong> ${start.toLocaleDateString('tr-TR')} - ${end.toLocaleDateString('tr-TR')}</p>
                 <p><strong>Süre:</strong> ${calculatedDays} Gün</p>
                 <hr>
                 <h3 style="color: #f59e0b; text-align:center">Toplam: ${calculatedTotal.toLocaleString('tr-TR')} TL</h3>
@@ -178,16 +214,18 @@ function ProductDetail() {
     try {
         Swal.fire({ title: 'İşleniyor...', didOpen: () => Swal.showLoading() })
 
-        // Backend'in beklediği format: YYYY-MM-DD
+        // Backend formatı (YYYY-MM-DD)
         const formatDate = (d) => {
-            const offset = d.getTimezoneOffset() * 60000;
-            return new Date(d.getTime() - offset).toISOString().split('T')[0];
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
         }
 
         const payload = {
             product_id: product.id,
-            start_date: formatDate(startDateObj),
-            end_date: formatDate(endDateObj)
+            start_date: formatDate(start),
+            end_date: formatDate(end)
         }
 
         await axiosClient.post('/transactions/rent', payload)
@@ -195,7 +233,7 @@ function ProductDetail() {
         Swal.fire('Başarılı', 'Kiralama talebi oluşturuldu! Satıcı onayı bekleniyor.', 'success');
         
         setDateRange([null, null]); 
-        fetchAvailability(); // Takvimi güncelle
+        fetchAvailability(); 
         
     } catch (error) {
         Swal.fire('Hata', error.response?.data?.message || "Kiralama başarısız.", 'error');
@@ -217,7 +255,6 @@ function ProductDetail() {
     <div style={styles.pageBackground}>
       <div style={styles.pageContainer}>
         
-        {/* Üst Kısım */}
         <div style={styles.topBar}>
             <span style={styles.categoryBadge}>{product.category}</span>
             <span style={styles.dateBadge}>📅 {new Date(product.created_at).toLocaleDateString('tr-TR')}</span>
@@ -243,7 +280,6 @@ function ProductDetail() {
                         <div style={styles.placeholder}>Görsel Yok</div>
                     )}
                 </div>
-                {/* Küçük Resimler */}
                 {product.images && product.images.length > 1 && (
                     <div style={styles.thumbnailRow}>
                         {product.images.map((img, index) => (
@@ -273,7 +309,6 @@ function ProductDetail() {
                     <p style={styles.descriptionText}>{product.description || 'Açıklama girilmemiş.'}</p>
                 </div>
 
-                {/* AKSİYON KARTI */}
                 <div style={styles.actionCard}>
                     {isSold && <div style={styles.alertBoxRed}>Bu ürün satılmıştır.</div>}
                     {!isSold && isOwner && <div style={styles.alertBoxGray}>Bu kendi ilanınızdır.</div>}
@@ -284,15 +319,17 @@ function ProductDetail() {
                                 <div style={styles.rentForm}>
                                     <h4 style={styles.actionTitle}>Müsaitlik Durumu ve Kiralama</h4>
                                     
-                                    {/* MANTINE DATEPICKER (Takvim) */}
                                     <DatePickerInput
+                                      key={busyTimestamps.length > 0 ? busyTimestamps.join('-') : "empty"}
                                       type="range"
                                       label="Kiralama Tarihleri Seçin"
                                       placeholder="Başlangıç - Bitiş"
                                       value={dateRange}
                                       onChange={setDateRange}
                                       minDate={new Date()} 
-                                      excludeDate={isDateDisabled} // Dolu günleri kapat
+                                      
+                                      excludeDate={isDateDisabled} 
+                                      
                                       locale="tr"
                                       clearable
                                       numberOfColumns={1}
