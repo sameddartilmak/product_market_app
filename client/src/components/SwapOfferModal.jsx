@@ -93,7 +93,7 @@ function SwapOfferModal({ isOpen, onClose, targetProduct }) {
                                     {selectedProductId === prod.id && <span>✅</span>}
                                 </div>
                             ))}
-                        </div>
+                        </div>  
                     )
                 )}
             </ScrollArea>

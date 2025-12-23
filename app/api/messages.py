@@ -51,9 +51,6 @@ def get_conversations():
     if isinstance(current_user_id, str):
          current_user_id = int(current_user_id)
 
-    # Benim gönderdiğim veya bana gelen mesajların olduğu tüm benzersiz kullanıcıları bulmalıyız
-    # Bu SQL sorgusu biraz karmaşıktır, basitleştirilmiş mantık kullanacağız:
-    
     # Tüm mesajlarımı çek
     all_msgs = Message.query.filter(
         or_(Message.sender_id == current_user_id, Message.receiver_id == current_user_id)
@@ -68,12 +65,24 @@ def get_conversations():
         if other_user_id not in conversations:
             other_user = User.query.get(other_user_id)
             if other_user:
+                # Okunmamış mesaj sayısını hesapla
+                unread_count = Message.query.filter(
+                    Message.sender_id == other_user_id,
+                    Message.receiver_id == current_user_id,
+                    Message.is_read == False
+                ).count()
+
                 conversations[other_user_id] = {
                     'user_id': other_user.id,
                     'username': other_user.username,
                     'profile_image': other_user.profile_image,
                     'last_message': msg.content,
-                    'date': msg.created_at.strftime('%Y-%m-%d %H:%M')
+                    'date': msg.created_at.strftime('%Y-%m-%d %H:%M'),
+                    # --- EKLENEN KISIM BURASI ---
+                    # Frontend bu verileri bekliyor, göndermezsek varsayılanı kullanır
+                    'is_unread': unread_count > 0,
+                    'unread_count': unread_count
+                    # ----------------------------
                 }
     
     return jsonify(list(conversations.values())), 200
@@ -82,11 +91,29 @@ def get_conversations():
 @jwt_required()
 def get_chat_history(other_user_id):
     """
-    Belirli bir kişiyle olan tüm mesaj geçmişini getirir.
+    Belirli bir kişiyle olan tüm mesaj geçmişini getirir ve okundu yapar.
     """
     current_user_id = get_jwt_identity()
     if isinstance(current_user_id, str):
          current_user_id = int(current_user_id)
+    
+    # Sohbet açıldığında mesajları okundu (is_read=True) yap
+    unread_messages = Message.query.filter(
+        Message.sender_id == other_user_id,
+        Message.receiver_id == current_user_id,
+        Message.is_read == False
+    ).all()
+
+    if unread_messages:
+        try:
+            for msg in unread_messages:
+                msg.is_read = True
+            
+            db.session.commit() # Veritabanına kalıcı olarak kaydet
+            print(f"{len(unread_messages)} adet mesaj okundu olarak işaretlendi.") # Terminalde bu yazıyı görmelisin
+        except Exception as e:
+            db.session.rollback()
+            print(f"HATA: Mesajlar güncellenemedi! {e}")    
 
     messages = Message.query.filter(
         or_(
@@ -103,7 +130,7 @@ def get_chat_history(other_user_id):
             'sender_name': msg.sender.username,
             'sender_image': msg.sender.profile_image,
             'content': msg.content,
-            'is_me': (msg.sender_id == current_user_id), # Frontend'de sağa/sola yaslamak için
+            'is_me': (msg.sender_id == current_user_id), 
             'date': msg.created_at.strftime('%H:%M')
         })
 

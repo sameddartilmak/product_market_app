@@ -7,7 +7,7 @@ import { AuthContext } from '../context/AuthContext'
 function Messages() {
   const navigate = useNavigate()
   
-  // Navbar'daki sayıyı güncellemek için Context'i kullanıyoruz
+  // Navbar'daki bildirim göstergesi için Context'i kullanıyoruz
   const { setUnreadCount } = useContext(AuthContext);
 
   const [conversations, setConversations] = useState([]) 
@@ -48,25 +48,18 @@ function Messages() {
     try {
         const res = await axiosClient.get('/messages/conversations')
         
-        // --- GÜNCELLEME: Mesaj Sayısı Simülasyonu ---
+        // --- GÜNCELLEME: Rastgele sayı kaldırıldı ---
         const formattedData = res.data.map(conv => {
-            // Backend'den 'unread_count' geliyorsa onu al.
-            // Gelmiyorsa (backend hazır değilse), test için 1 ile 5 arası rastgele sayı üret.
-            // Böylece arayüzde "3", "5" gibi farklı sayılar görebilirsin.
-            const fakeCount = Math.floor(Math.random() * 5) + 1; 
-            const finalCount = conv.unread_count !== undefined ? conv.unread_count : fakeCount;
-
             return {
                 ...conv,
-                // Eğer backend 'is_unread' bilgisini göndermiyorsa, varsayılan olarak 'true' yapıyoruz
-                is_unread: conv.is_unread !== undefined ? conv.is_unread : true, 
-                unread_count: finalCount
+                // Backend 'is_unread' gönderiyorsa onu al, yoksa varsayılan false olsun (veya true)
+                is_unread: conv.is_unread !== undefined ? conv.is_unread : true 
             };
         })
         
         setConversations(formattedData)
         
-        // Navbar'daki sayıyı güncelle (Toplam okunmamış kişi sayısı)
+        // Navbar'daki sayıyı güncelle (Kaç farklı kişiden okunmamış mesaj var)
         const totalUnread = formattedData.filter(c => c.is_unread).length;
         setUnreadCount(totalUnread);
         
@@ -83,10 +76,10 @@ function Messages() {
     // Mesajı okundu olarak işaretle
     if (user.is_unread) {
         setConversations(prev => prev.map(c => 
-            c.user_id === user.user_id ? { ...c, is_unread: false, unread_count: 0 } : c
+            c.user_id === user.user_id ? { ...c, is_unread: false } : c
         ))
         
-        // Navbar'daki sayıyı 1 azalt
+        // Navbar'daki bildirim sayısını 1 azalt
         setUnreadCount(prev => (prev > 0 ? prev - 1 : 0));
     }
 
@@ -158,7 +151,7 @@ function Messages() {
     <div style={styles.pageWrapper}>
         <div style={styles.container}>
         
-        {/* SOL TARA: KİŞİ LİSTESİ (SIDEBAR) */}
+        {/* SOL TARAF: KİŞİ LİSTESİ (SIDEBAR) */}
         <div style={styles.sidebar}>
             <div style={styles.sidebarHeader}>
                 <h3 style={styles.headerTitle}>Gelen Kutusu</h3>
@@ -177,7 +170,6 @@ function Messages() {
                             onClick={() => selectUser(c)}
                             style={{
                                 ...styles.userItem,
-                                // Okunmamışsa mavi arka plan, seçiliyse gri
                                 backgroundColor: selectedUser?.user_id === c.user_id 
                                     ? '#f3f4f6' 
                                     : (c.is_unread ? '#eff6ff' : 'transparent'),
@@ -207,13 +199,12 @@ function Messages() {
                                 </div>
                             </div>
 
-                            {/* --- Sağ Taraf: Saat ve Rozet --- */}
+                            {/* --- Sağ Taraf: Saat ve Kırmızı Nokta --- */}
                             <div style={styles.metaInfo}>
                                 <span style={styles.metaTime}>14:30</span>
                                 {c.is_unread && (
-                                    <div style={styles.unreadBadge}>
-                                        {c.unread_count}
-                                    </div>
+                                    // Sadece kırmızı nokta (içinde sayı yok)
+                                    <div style={styles.unreadBadge}></div>
                                 )}
                             </div>
                         </div>
@@ -314,7 +305,7 @@ const styles = {
     border: '1px solid #e5e7eb'
   },
   
-  // SOL TARA (SIDEBAR)
+  // SOL TARAF (SIDEBAR)
   sidebar: { 
     width: '320px', 
     borderRight: '1px solid #e5e7eb', 
@@ -384,7 +375,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-end',
-    gap: '6px',
+    gap: '8px', // Aralık biraz açıldı
     minWidth: '40px'
   },
   metaTime: {
@@ -392,20 +383,15 @@ const styles = {
     color: '#9ca3af',
     fontWeight: '500'
   },
-  // Kırmızı Yuvarlak Rozet (Esnek Genişlik)
+  
+  // GÜNCELLEME: Sadece Kırmızı Nokta Stili
   unreadBadge: {
-    backgroundColor: '#ef4444', 
-    color: 'white',
-    fontSize: '0.75rem',
-    fontWeight: 'bold',
-    minWidth: '20px',      // Minimum genişlik
-    height: '20px',
-    borderRadius: '12px',  // Hap şekli için
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '0 6px',      // İç boşluk (sayı büyürse taşmasın)
-    boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)'
+    backgroundColor: '#ef4444', // Kırmızı
+    width: '10px',              // Küçük boyut
+    height: '10px',
+    borderRadius: '50%',        // Tam yuvarlak
+    boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)',
+    flexShrink: 0
   },
 
   chatArea: { flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#fdfdfd' },
