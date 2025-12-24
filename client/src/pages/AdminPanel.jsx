@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axiosClient from '../api/axiosClient'; // axiosClient kullanıyoruz
+import axiosClient from '../api/axiosClient'; 
 import { toast } from 'react-toastify'
+
+// Mantine Bileşenleri (Daha temiz görünüm için)
+import { Badge, Button } from '@mantine/core';
 
 function AdminPanel() {
   const navigate = useNavigate()
@@ -9,12 +12,11 @@ function AdminPanel() {
   const [activeTab, setActiveTab] = useState('dashboard') 
   
   const [stats, setStats] = useState({ users: 0, products: 0, income: 0 })
-  // dataList başlangıçta boş array olmalı ki map ederken hata vermesin
   const [dataList, setDataList] = useState({ users: [], products: [], transactions: [] })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // sessionStorage kullanıyoruz (Login yapını buna çevirmiştik)
+    // sessionStorage kullanıyoruz
     const role = sessionStorage.getItem('role');
     
     if (role !== 'admin') {
@@ -32,14 +34,14 @@ function AdminPanel() {
         const resStats = await axiosClient.get('/admin/stats')
         setStats(resStats.data)
 
-        // 2. Tablo verilerini çek (Eğer backend'de bu endpoint hazırsa)
+        // 2. Tablo verilerini çek
         try {
             const resData = await axiosClient.get('/admin/all-data')
             if(resData.data) {
                 setDataList(resData.data)
             }
         } catch (err) {
-            console.log("Tablo verileri çekilemedi (Endpoint eksik olabilir).");
+            console.log("Tablo verileri çekilemedi.");
         }
         
     } catch (error) {
@@ -50,17 +52,53 @@ function AdminPanel() {
     }
   }
 
+  // --- SİLME / İPTAL ETME FONKSİYONU ---
   const handleDelete = async (type, id) => {
-    if (!window.confirm("Bu kaydı silmek istediğinize emin misiniz?")) return;
+    const confirmMsg = type === 'transaction' 
+        ? "Bu işlemi veritabanından kalıcı olarak silmek/iptal etmek istiyor musunuz?" 
+        : "Bu kaydı silmek istediğinize emin misiniz?";
+
+    if (!window.confirm(confirmMsg)) return;
 
     try {
         await axiosClient.delete(`/admin/delete-${type}/${id}`)
-        toast.success("Kayıt silindi.")
-        fetchAllData() 
+        toast.success("İşlem başarıyla gerçekleştirildi.")
+        fetchAllData() // Tabloyu yenile
     } catch (error) {
-        toast.error("Silme başarısız.")
+        toast.error("Silme işlemi başarısız: " + (error.response?.data?.message || "Hata"))
     }
   }
+
+  // --- HELPER: Ürün Durumunu ve Tipini Gösterir ---
+  const renderProductStatus = (p) => {
+      // Eğer ürün satılmışsa (sold)
+      if (p.status === 'sold') {
+          return <Badge color="red" variant="filled">SATILDI</Badge>;
+      }
+      
+      // Satılmamışsa ilan türüne göre etiket göster
+      const type = p.listing_type || 'sale'; 
+
+      switch (type) {
+          case 'rent': return <Badge color="orange" variant="light">Kiralık</Badge>;
+          case 'swap': return <Badge color="grape" variant="light">Takaslık</Badge>;
+          case 'sale': default: return <Badge color="blue" variant="light">Satılık</Badge>;
+      }
+  };
+
+  // --- HELPER: İşlem Durumunu Gösterir ---
+  const renderTransactionStatus = (status) => {
+      // Eğer status null/undefined geliyorsa
+      if (!status) return <Badge color="gray">Durum Yok</Badge>;
+      
+      const s = status.toUpperCase();
+      if (s === 'PENDING') return <Badge color="yellow">Onay Bekliyor</Badge>;
+      if (s === 'APPROVED') return <Badge color="green">Onaylandı</Badge>;
+      if (s === 'COMPLETED') return <Badge color="blue">Tamamlandı</Badge>;
+      if (s === 'REJECTED') return <Badge color="red">Reddedildi</Badge>;
+      
+      return <Badge color="gray">{status}</Badge>;
+  };
 
   if (loading) return (
     <div style={{display:'flex', justifyContent:'center', alignItems:'center', height:'100vh', backgroundColor:'#f3f4f6', color:'#4f46e5'}}>
@@ -129,7 +167,6 @@ function AdminPanel() {
         {activeTab === 'dashboard' && (
             <div style={styles.dashboardContainer}>
                 <div style={styles.statsGrid}>
-                    {/* Kullanıcı Kartı */}
                     <div style={styles.card}>
                         <div style={{...styles.iconBox, backgroundColor:'#e0e7ff', color:'#4338ca'}}>👥</div>
                         <div>
@@ -137,8 +174,6 @@ function AdminPanel() {
                             <h2 style={styles.cardValue}>{stats.users || 0}</h2>
                         </div>
                     </div>
-
-                    {/* Ürün Kartı */}
                     <div style={styles.card}>
                         <div style={{...styles.iconBox, backgroundColor:'#d1fae5', color:'#065f46'}}>📦</div>
                         <div>
@@ -146,8 +181,6 @@ function AdminPanel() {
                             <h2 style={styles.cardValue}>{stats.products || 0}</h2>
                         </div>
                     </div>
-
-                    {/* Ciro Kartı */}
                     <div style={styles.card}>
                         <div style={{...styles.iconBox, backgroundColor:'#fae8ff', color:'#86198f'}}>💰</div>
                         <div>
@@ -181,11 +214,16 @@ function AdminPanel() {
                                 </td>
                                 <td style={styles.td}>{u.email}</td>
                                 <td style={styles.td}>
-                                    <span style={u.role === 'admin' ? styles.badgeAdmin : styles.badgeUser}>{u.role}</span>
+                                    <Badge color={u.role === 'admin' ? 'blue' : 'gray'}>{u.role}</Badge>
                                 </td>
                                 <td style={styles.td}>
                                     {u.role !== 'admin' && (
-                                        <button onClick={() => handleDelete('user', u.id)} style={styles.delBtn}>Sil</button>
+                                        <Button 
+                                            color="red" variant="light" size="xs" 
+                                            onClick={() => handleDelete('user', u.id)}
+                                        >
+                                            Sil
+                                        </Button>
                                     )}
                                 </td>
                             </tr>
@@ -207,7 +245,7 @@ function AdminPanel() {
                             <th style={styles.th}>Ürün</th>
                             <th style={styles.th}>Fiyat</th>
                             <th style={styles.th}>Satıcı</th>
-                            <th style={styles.th}>Durum</th>
+                            <th style={styles.th}>Durum / Tip</th>
                             <th style={styles.th}>İşlem</th>
                         </tr>
                     </thead>
@@ -221,10 +259,16 @@ function AdminPanel() {
                                 <td style={styles.td}>{p.price} TL</td>
                                 <td style={styles.td}>{p.owner}</td>
                                 <td style={styles.td}>
-                                    <span style={p.status === 'active' ? styles.badgeSuccess : styles.badgeWarning}>{p.status}</span>
+                                    {/* GÜNCELLEME: Burada artık helper fonksiyonu çağırıyoruz */}
+                                    {renderProductStatus(p)}
                                 </td>
                                 <td style={styles.td}>
-                                    <button onClick={() => handleDelete('product', p.id)} style={styles.delBtn}>İlanı Kaldır</button>
+                                    <Button 
+                                        color="red" variant="subtle" size="xs" 
+                                        onClick={() => handleDelete('product', p.id)}
+                                    >
+                                        Kaldır
+                                    </Button>
                                 </td>
                             </tr>
                         )) : (
@@ -246,7 +290,7 @@ function AdminPanel() {
                             <th style={styles.th}>Alıcı</th>
                             <th style={styles.th}>Satıcı</th>
                             <th style={styles.th}>Tutar</th>
-                            <th style={styles.th}>Tür</th>
+                            <th style={styles.th}>Durum</th>
                             <th style={styles.th}>İşlem</th>
                         </tr>
                     </thead>
@@ -257,12 +301,18 @@ function AdminPanel() {
                                 <td style={styles.td}>{t.product}</td>
                                 <td style={styles.td}>{t.buyer}</td>
                                 <td style={styles.td}>{t.seller}</td>
-                                <td style={{...styles.td, color:'#059669', fontWeight:'bold'}}>{t.price} TL</td>
+                                <td style={{...styles.td, fontWeight:'bold'}}>{t.price} TL</td>
                                 <td style={styles.td}>
-                                    <span style={styles.badgeInfo}>{t.type}</span>
+                                    {/* GÜNCELLEME: Burada artık helper fonksiyonu çağırıyoruz */}
+                                    {renderTransactionStatus(t.status)}
                                 </td>
                                 <td style={styles.td}>
-                                    <button onClick={() => handleDelete('transaction', t.id)} style={styles.delBtn}>İptal Et</button>
+                                    <Button 
+                                        color="red" size="xs" variant="outline"
+                                        onClick={() => handleDelete('transaction', t.id)}
+                                    >
+                                        İptal Et
+                                    </Button>
                                 </td>
                             </tr>
                         )) : (
@@ -278,7 +328,7 @@ function AdminPanel() {
   )
 }
 
-// --- MODERN CSS STYLES ---
+// --- CSS STYLES ---
 const styles = {
   wrapper: { display: 'flex', minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: '"Segoe UI", sans-serif' },
   sidebar: { width: '280px', backgroundColor: '#111827', color: '#e5e7eb', display: 'flex', flexDirection: 'column', position: 'fixed', height: '100%', left: 0, top: 0 },
@@ -304,13 +354,7 @@ const styles = {
   theadRow: { backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' },
   th: { padding: '16px 24px', fontSize: '0.75rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' },
   tr: { borderBottom: '1px solid #f3f4f6', transition: 'background 0.2s' },
-  td: { padding: '16px 24px', fontSize: '0.95rem', color: '#4b5563' },
-  delBtn: { backgroundColor: '#fee2e2', color: '#ef4444', border: '1px solid #fecaca', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', transition: '0.2s' },
-  badgeAdmin: { backgroundColor: '#e0e7ff', color: '#4338ca', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' },
-  badgeUser: { backgroundColor: '#f3f4f6', color: '#4b5563', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600' },
-  badgeSuccess: { backgroundColor: '#d1fae5', color: '#065f46', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' },
-  badgeWarning: { backgroundColor: '#fef3c7', color: '#92400e', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' },
-  badgeInfo: { backgroundColor: '#dbeafe', color: '#1e40af', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '700' }
+  td: { padding: '16px 24px', fontSize: '0.95rem', color: '#4b5563' }
 }
 
 export default AdminPanel

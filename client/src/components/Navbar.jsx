@@ -2,7 +2,7 @@ import { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
-// Mantine Bileşenleri (Indicator kaldırıldı)
+// Mantine Bileşenleri
 import { 
   Container, 
   Group, 
@@ -10,12 +10,13 @@ import {
   Text, 
   Avatar, 
   Menu, 
-  Box 
+  Box,
+  Indicator // Bildirim noktası için geri ekledik
 } from '@mantine/core';
 
 function Navbar() {
-  // unreadCount'a artık ihtiyacımız yok
-  const { user, logout } = useContext(AuthContext);
+  // unreadCount'u Context'ten çekiyoruz (Mesajlarda kırmızı nokta için)
+  const { user, logout, unreadCount } = useContext(AuthContext);
   const navigate = useNavigate();
 
   // Profil Resmi URL Düzeltici
@@ -69,10 +70,18 @@ function Navbar() {
                       Vitrin
                     </Button>
 
-                    {/* Mesajlar Butonu (Sayı göstergesi kaldırıldı) */}
-                    <Button variant="subtle" component={Link} to="/messages" color="gray">
-                      💬 Mesajlar
-                    </Button>
+                    {/* Mesajlar Butonu (Kırmızı Nokta Eklendi) */}
+                    <Indicator 
+                        color="red" 
+                        size={9} 
+                        offset={6} 
+                        processing // Yanıp sönme efekti
+                        disabled={!unreadCount || unreadCount === 0} // 0 ise gösterme
+                    >
+                        <Button variant="subtle" component={Link} to="/messages" color="gray">
+                          💬 Mesajlar
+                        </Button>
+                    </Indicator>
 
                     <Button 
                       component={Link} 
@@ -87,7 +96,7 @@ function Navbar() {
                 )}
 
                 {/* --- PROFİL MENÜSÜ --- */}
-                <Menu shadow="md" width={200} trigger="hover" openDelay={100} closeDelay={400}>
+                <Menu shadow="md" width={240} trigger="hover" openDelay={100} closeDelay={400}>
                   <Menu.Target>
                     <Button 
                         variant="light" 
@@ -117,12 +126,10 @@ function Navbar() {
                             👤 Profilim
                         </Menu.Item>
 
+                        {/* TEK ÇATI ALTINDA BİRLEŞTİRİLDİ */}
                         <Menu.Item component={Link} to="/requests">
-                          📥 Gelen Talepler <Text span c="dimmed" size="xs" ml={5}>(Kiralama)</Text>
+                          📋 Taleplerim <Text span c="dimmed" size="xs" ml={5}>(Alım/Satım/Takas)</Text>
                         </Menu.Item>        
-                        <Menu.Item component={Link} to="/swaps">
-                             🔄 Takaslarım <Text span c="dimmed" size="xs" ml={5}>(Takas)</Text>
-                        </Menu.Item>
                       </>
                     )}
                     

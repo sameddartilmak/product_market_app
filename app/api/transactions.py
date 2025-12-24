@@ -121,7 +121,7 @@ def rent_product():
     if product.owner_id == current_user_id:
         return jsonify({'message': 'Kendi ürününüzü kiralayamazsınız.'}), 400
 
-    # --- D) YENİ EKLENEN KISIM: ÇAKIŞMA KONTROLÜ (Oluştururken) ---
+    # --- D) ÇAKIŞMA KONTROLÜ (Oluştururken) ---
     # Eğer bu tarihlerde ONAYLANMIŞ (APPROVED) başka bir işlem varsa izin verme.
     conflicting_approved = Transaction.query.filter(
         Transaction.product_id == product_id,
@@ -132,7 +132,6 @@ def rent_product():
 
     if conflicting_approved:
         return jsonify({'message': 'Bu tarihlerde ürün zaten kiralanmış (Onaylı Rezervasyon). Lütfen başka tarih seçin.'}), 400
-    # -------------------------------------------------------------
     
     # E) Fiyat Hesaplama
     daily_price = product.price 
@@ -170,16 +169,14 @@ def rent_product():
         return jsonify({'message': 'Kiralama başarısız.', 'error': str(e)}), 500
 
 
-# --- 3. GELEN TALEPLERİ LİSTELEME ---
+# --- 3. GELEN TALEPLERİ LİSTELEME (INCOMING) ---
 @transactions_bp.route('/incoming', methods=['GET'])
 @cross_origin()
 @jwt_required()
 def get_incoming_requests():
     current_user_id = int(get_jwt_identity())
     
-    # Debug için
-    print(f"Gelen Talepler - Kullanıcı ID: {current_user_id}")
-    
+    # Satıcısı BEN olduğum işlemler (Bana gelenler)
     transactions = Transaction.query.filter_by(seller_id=current_user_id).order_by(Transaction.id.desc()).all()
     
     results = []
@@ -187,17 +184,18 @@ def get_incoming_requests():
         product = Product.query.get(t.product_id)
         buyer = User.query.get(t.buyer_id)
         
-        # --- HATA BURADAYDI, image_url OLARAK GÜNCELLENDİ ---
         product_image = None
         if product:
-            # Modelinde 'image_url' var, 'image_file' YOK.
+            # Modelde 'image_url' property'si veya alanı varsa onu al
             product_image = getattr(product, 'image_url', None)
-        # ----------------------------------------------------
+            # Eğer image_url boşsa ve images ilişkisi varsa oradan al (Yedek)
+            if not product_image and hasattr(product, 'images') and product.images:
+                 product_image = product.images[0].image_url
 
         results.append({
             'id': t.id,
             'product_title': product.title if product else 'Silinmiş Ürün',
-            'product_image': product_image,  # Düzeltilmiş değişkeni kullanıyoruz
+            'product_image': product_image,
             'buyer_name': buyer.username if buyer else 'Bilinmeyen Kullanıcı',
             'buyer_username': buyer.username if buyer else 'Bilinmeyen',
             'transaction_type': t.transaction_type, 
@@ -211,7 +209,46 @@ def get_incoming_requests():
     return jsonify(results), 200
 
 
-# --- 4. TALEP ONAYLA / REDDET ---
+# --- 4. GİDEN TALEPLERİ LİSTELEME (OUTGOING) - YENİ EKLENEN KISIM ---
+@transactions_bp.route('/outgoing', methods=['GET'])
+@cross_origin()
+@jwt_required()
+def get_outgoing_requests():
+    current_user_id = int(get_jwt_identity())
+    
+    # Alıcısı (Talep Edeni) BEN olduğum işlemler (Benim gönderdiklerim)
+    transactions = Transaction.query.filter_by(buyer_id=current_user_id).order_by(Transaction.id.desc()).all()
+    
+    results = []
+    for t in transactions:
+        product = Product.query.get(t.product_id)
+        seller = User.query.get(t.seller_id)
+        
+        product_image = None
+        if product:
+            product_image = getattr(product, 'image_url', None)
+            if not product_image and hasattr(product, 'images') and product.images:
+                 product_image = product.images[0].image_url
+
+        results.append({
+            'id': t.id,
+            'product_title': product.title if product else 'Silinmiş Ürün',
+            'product_image': product_image,
+            'seller_name': seller.username if seller else 'Bilinmeyen Satıcı',
+            'transaction_type': t.transaction_type, 
+            'status': t.status, 
+            'price': float(t.price),
+            'start_date': t.start_date.strftime('%Y-%m-%d') if t.start_date else None,
+            'end_date': t.end_date.strftime('%Y-%m-%d') if t.end_date else None,
+            'created_at': t.created_at.strftime('%Y-%m-%d %H:%M') if hasattr(t, 'created_at') else None,
+            # Takas bilgileri (Varsa)
+            'swap_product_title': t.swap_product.title if hasattr(t, 'swap_product') and t.swap_product else None
+        })
+
+    return jsonify(results), 200
+
+
+# --- 5. TALEP ONAYLA / REDDET ---
 @transactions_bp.route('/<int:transaction_id>/respond', methods=['POST'])
 @cross_origin()
 @jwt_required()
@@ -227,10 +264,7 @@ def respond_to_request(transaction_id):
         return jsonify({'message': 'Bu işlem için yetkiniz yok.'}), 403
 
     if action == 'approve':
-        # --- YENİ EKLENEN KISIM: OTOMATİK REDDETME MANTIĞI ---
-        
         # 1. Önce tekrar kontrol et: Bu tarihlerde ONAYLANMIŞ başka işlem var mı?
-        # (Aynı anda iki admin farklı tarayıcıdan onaylamaya çalışırsa diye)
         overlap_check = Transaction.query.filter(
             Transaction.product_id == transaction.product_id,
             Transaction.id != transaction.id,
@@ -261,8 +295,6 @@ def respond_to_request(transaction_id):
             count_rejected += 1
             print(f"Otomatik Reddedilen Talep ID: {conflict.id}")
         
-        # -----------------------------------------------------
-
     elif action == 'reject':
         transaction.status = 'REJECTED'
     else:

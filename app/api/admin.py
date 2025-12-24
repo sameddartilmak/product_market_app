@@ -48,10 +48,10 @@ def get_all_data():
     users_data = [{'id': u.id, 'username': u.username, 'email': u.email, 'role': u.role} for u in users]
 
     products = Product.query.all()
-    products_data = [{'id': p.id, 'title': p.title, 'price': p.price, 'owner': p.owner.username, 'status': p.status} for p in products]
+    products_data = [{'id': p.id, 'title': p.title, 'price': p.price, 'owner': p.owner.username, 'status': p.status,'listing_type': p.listing_type} for p in products]
 
     transactions = Transaction.query.order_by(Transaction.created_at.desc()).all()
-    transactions_data = [{'id': t.id, 'product': t.product.title, 'buyer': t.buyer.username, 'seller': t.seller.username, 'price': float(t.price), 'type': t.transaction_type} for t in transactions]
+    transactions_data = [{'id': t.id, 'product': t.product.title, 'buyer': t.buyer.username, 'seller': t.seller.username, 'price': float(t.price), 'type': t.transaction_type,'status': t.status} for t in transactions]
 
     return jsonify({
         'users': users_data,
