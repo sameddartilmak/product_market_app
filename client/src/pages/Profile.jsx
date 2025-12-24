@@ -1,13 +1,11 @@
 // client/src/pages/Profile.jsx
 import { useEffect, useState, useContext } from 'react'
-import axios from 'axios'
+// DÜZELTME 1: axiosClient import edildi
+import axiosClient from '../api/axiosClient' 
 import { AuthContext } from '../context/AuthContext'
 import { toast } from 'react-toastify'
-// İkonlar için basit bir emoji kullanımı devam ediyor, 
-// ancak tasarım bunları daha profesyonel gösterecek.
 
 function Profile() {
-  // --- MANTIK KISMI (AYNEN KORUNDU) ---
   const { logout, updateUser } = useContext(AuthContext)
   
   const [profileData, setProfileData] = useState(null)
@@ -22,12 +20,11 @@ function Profile() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem('token')
-        if (!token) return;
-
-        const res = await axios.get('http://127.0.0.1:5000/api/auth/profile', {
-            headers: { Authorization: `Bearer ${token}` }
-        })
+        // DÜZELTME 2: localStorage kontrolüne gerek yok, axiosClient interceptor'ı hallediyor.
+        // Eğer token yoksa axiosClient zaten login'e atar veya hata döner.
+        
+        const res = await axiosClient.get('/auth/profile')
+        
         setProfileData(res.data)
         setBio(res.data.bio || '')
         setLocation(res.data.location || '')
@@ -60,17 +57,17 @@ function Profile() {
     }
 
     try {
-        const token = localStorage.getItem('token')
-        const res = await axios.put('http://127.0.0.1:5000/api/auth/profile', formData, {
-            headers: { Authorization: `Bearer ${token}` }
+        // DÜZELTME 3: Token'ı elle eklemeye gerek yok, axiosClient otomatik ekliyor.
+        const res = await axiosClient.put('/auth/profile', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data' // Dosya gönderdiğimiz için bunu belirtmek iyi olur
+            }
         })
         
         setProfileData(res.data.user) 
         
         if (updateUser) {
             updateUser(res.data.user)
-        } else {
-            console.warn("⚠️ Uyarı: updateUser fonksiyonu bulunamadı!")
         }
 
         toast.success('Profil güncellendi! 🎉')
@@ -94,7 +91,7 @@ function Profile() {
     </div>
   )
 
-  // --- YENİ TASARIM (JSX) ---
+  // --- TASARIM (JSX) ---
   return (
     <div style={styles.pageContainer}>
       <div style={styles.card}>
@@ -106,7 +103,7 @@ function Profile() {
         <div style={styles.headerContent}>
             <div style={styles.avatarContainer}>
                 <img 
-                    src={previewUrl || profileData?.profile_image || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
+                    src={previewUrl || (profileData?.profile_image ? (profileData.profile_image.startsWith('http') ? profileData.profile_image : `http://127.0.0.1:5000${profileData.profile_image}`) : "https://cdn-icons-png.flaticon.com/512/3135/3135715.png")} 
                     alt="Profil" 
                     style={styles.avatar} 
                 />
@@ -193,14 +190,14 @@ function Profile() {
   )
 }
 
-// --- YENİ CSS STİLLERİ (Object Styles) ---
+// --- CSS STİLLERİ ---
 const styles = {
   pageContainer: {
     minHeight: '100vh',
-    backgroundColor: '#f3f4f6', // Çok açık gri arka plan
+    backgroundColor: '#f3f4f6', 
     display: 'flex',
     justifyContent: 'center',
-    alignItems: 'center', // Dikeyde ortala
+    alignItems: 'center', 
     padding: '20px',
     fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif'
   },
@@ -215,10 +212,10 @@ const styles = {
   },
   banner: {
     height: '140px',
-    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', // Mor-Mavi gradient
+    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', 
   },
   headerContent: {
-    marginTop: '-70px', // Avatarı yukarı kaydırır
+    marginTop: '-70px', 
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -316,7 +313,7 @@ const styles = {
   editBtn: {
     width: '100%',
     padding: '12px',
-    backgroundColor: '#6366f1', // İndigo rengi
+    backgroundColor: '#6366f1', 
     color: 'white',
     border: 'none',
     borderRadius: '12px',
@@ -329,7 +326,7 @@ const styles = {
   saveBtn: {
     flex: 2,
     padding: '12px',
-    backgroundColor: '#10b981', // Yeşil
+    backgroundColor: '#10b981', 
     color: 'white',
     border: 'none',
     borderRadius: '12px',
@@ -340,7 +337,7 @@ const styles = {
   cancelBtn: {
     flex: 1,
     padding: '12px',
-    backgroundColor: '#ef4444', // Kırmızı
+    backgroundColor: '#ef4444', 
     color: 'white',
     border: 'none',
     borderRadius: '12px',
@@ -364,5 +361,5 @@ const styles = {
     textDecoration: 'underline'
   }
 }
-
+ 
 export default Profile

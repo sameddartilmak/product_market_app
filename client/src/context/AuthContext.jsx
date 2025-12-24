@@ -11,11 +11,18 @@ export const AuthProvider = ({ children }) => {
 
   // --- Mesaj Sayısını Güncelleme ---
   const updateUnreadCount = async () => {
+    // sessionStorage kontrolü (Login.jsx ile uyumlu)
     if (!sessionStorage.getItem('token')) return;
 
     try {
         const res = await axiosClient.get('/messages/conversations');
-        setUnreadCount(res.data.length); 
+        
+        // --- DÜZELTME BURADA ---
+        // Eskiden: res.data.length (Tüm sohbet sayısını veriyordu)
+        // Şimdi: Sadece is_unread değeri true olanları sayıyoruz.
+        const unreadChats = res.data.filter(c => c.is_unread).length;
+        setUnreadCount(unreadChats); 
+
     } catch (error) {
         console.error("Mesaj sayısı güncellenemedi:", error);
     }
@@ -25,24 +32,23 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkUserLoggedIn = () => {
       try {
+        // localStorage yerine sessionStorage kullanıyoruz
         const storedUser = sessionStorage.getItem('user')
         const storedToken = sessionStorage.getItem('token')
-        // Role bilgisini de kontrol et
         const storedRole = sessionStorage.getItem('role')
 
         if (storedUser && storedToken) {
           const parsedUser = JSON.parse(storedUser);
-          // Eğer user objesinin içinde role yoksa, storedRole'dan ekle
+          
           if (!parsedUser.role && storedRole) {
             parsedUser.role = storedRole;
           }
+          
           setUser(parsedUser)
         }
       } catch (error) {
         console.error("❌ Auth verisi okunurken hata:", error)
-        sessionStorage.removeItem('user')
-        sessionStorage.removeItem('token')
-        sessionStorage.removeItem('role')
+        sessionStorage.clear(); // Hata varsa her şeyi temizle
       } finally {
         setLoading(false)
       }
@@ -55,6 +61,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
         updateUnreadCount(); 
+        // 30 saniyede bir yeni mesaj var mı diye kontrol et
         const interval = setInterval(updateUnreadCount, 30000);
         return () => clearInterval(interval);
     }
@@ -64,11 +71,11 @@ export const AuthProvider = ({ children }) => {
   const login = (userData, token) => {
     setUser(userData)
     
-    // DEĞİŞİKLİK: Token, User ve ROLE sessionStorage'a kaydediliyor
+    // Login.jsx ile uyumlu: Verileri sessionStorage'a kaydediyoruz.
+    // Böylece sekme kapanınca oturum biter, diğer sekmelerle karışmaz.
     sessionStorage.setItem('token', token) 
     sessionStorage.setItem('user', JSON.stringify(userData))
     
-    // User objesinden role'ü alıp ayrıca kaydediyoruz (Admin paneli için kritik)
     if (userData.role) {
         sessionStorage.setItem('role', userData.role);
     }
@@ -83,10 +90,10 @@ export const AuthProvider = ({ children }) => {
     setUser(null)
     setUnreadCount(0)
     
-    // DEĞİŞİKLİK: Tüm session verilerini temizle
+    // Çıkışta sessionStorage temizlenir
     sessionStorage.removeItem('token')
     sessionStorage.removeItem('user')
-    sessionStorage.removeItem('role') // Role silindi
+    sessionStorage.removeItem('role')
     
     toast.info("Başarıyla çıkış yapıldı. Görüşmek üzere! 🌟")
     

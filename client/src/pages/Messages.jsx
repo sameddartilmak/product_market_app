@@ -18,8 +18,10 @@ function Messages() {
 
   const messagesEndRef = useRef(null)
 
+  // --- GÜNCELLEME: sessionStorage Kullanımı ---
   const getUserID = () => {
-    const userStr = localStorage.getItem('user');
+    // Artık kullanıcı bilgisini session'dan alıyoruz
+    const userStr = sessionStorage.getItem('user');
     if (userStr) {
         try {
             return JSON.parse(userStr).id;
@@ -32,7 +34,9 @@ function Messages() {
   const currentUserId = getUserID();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    // --- GÜNCELLEME: sessionStorage Kullanımı ---
+    const token = sessionStorage.getItem('token');
+    
     if (!token) {
         navigate('/login')
         return
@@ -48,7 +52,6 @@ function Messages() {
     try {
         const res = await axiosClient.get('/messages/conversations')
         
-        // --- GÜNCELLEME: Rastgele sayı kaldırıldı ---
         const formattedData = res.data.map(conv => {
             return {
                 ...conv,

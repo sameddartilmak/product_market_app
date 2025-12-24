@@ -3,7 +3,7 @@ import axiosClient from '../api/axiosClient'
 import { AuthContext } from '../context/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import Swal from 'sweetalert2' // YENİ: Hata mesajını bununla göstereceğiz
+import Swal from 'sweetalert2' 
 
 // --- MANTINE IMPORTLARI ---
 import { 
@@ -28,7 +28,8 @@ function Login() {
   const { login } = useContext(AuthContext)
   const navigate = useNavigate()
 
-  // --- 1. SAYFA AÇILINCA HAFIZAYI KONTROL ET ---
+  // --- 1. SAYFA AÇILINCA "BENİ HATIRLA" VERİSİNİ KONTROL ET ---
+  // Burası localStorage'dan okumaya devam etmeli (Kalıcı olması için)
   useEffect(() => {
     const savedCreds = localStorage.getItem('remember_creds');
     if (savedCreds) {
@@ -50,7 +51,7 @@ function Login() {
 
   // --- MANTIK KISMI ---
   const handleSubmit = async (e) => {
-    e.preventDefault() // Sayfanın yenilenmesini engeller
+    e.preventDefault() 
     setLoading(true);
 
     try {
@@ -63,9 +64,17 @@ function Login() {
       // 2. Başarılıysa İşlemleri Yap
       if (res.data.access_token) {
 
-        localStorage.setItem('token', res.data.access_token);
+        // --- DEĞİŞİKLİK BURADA ---
+        // Token'ı artık sessionStorage'a kaydediyoruz.
+        // Böylece sekme kapanınca oturum biter ve diğer sekmelerle karışmaz.
+        sessionStorage.setItem('token', res.data.access_token);
         
-          // --- BENİ HATIRLA ---
+        // Kullanıcı bilgisini de sessionStorage'a atalım (AuthContext kullanıyorsa orayı da güncellemen gerekebilir)
+        sessionStorage.setItem('user', JSON.stringify(res.data.user));
+
+          // --- BENİ HATIRLA (KALICI OLMAYA DEVAM ETMELİ) ---
+          // Kullanıcı adı ve şifreyi hatırlamak için localStorage kullanıyoruz.
+          // Token sessionStorage'da olsa bile, burası sayesinde form otomatik dolar.
           if (rememberMe) {
               const creds = btoa(`${username}:${password}`);
               localStorage.setItem('remember_creds', creds);
@@ -91,23 +100,17 @@ function Login() {
     } catch (error) {
       console.error("Giriş Hatası Detayı:", error);
       
-      // Hata Mesajını Belirle
       let errorMessage = 'Kullanıcı adı veya şifre hatalı!';
       
       if (error.response) {
-          // Sunucudan gelen mesaj varsa onu kullan
           errorMessage = error.response.data.message || errorMessage;
-          
-          // Eğer sunucu 500 hatası verdiyse
           if (error.response.status === 500) {
               errorMessage = "Sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin.";
           }
       } else if (error.request) {
-          // Sunucuya hiç ulaşılamadıysa
           errorMessage = "Sunucuya bağlanılamadı. İnternetinizi kontrol edin.";
       }
 
-      // YENİ: SweetAlert ile ekrana bas (Gözden kaçması imkansız)
       Swal.fire({
         icon: 'error',
         title: 'Giriş Başarısız',

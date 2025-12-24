@@ -1,13 +1,14 @@
 // client/src/pages/AddProduct.jsx
 import { useState } from 'react'
-import axios from 'axios'
+// DÜZELTME 1: Normal axios yerine kendi yazdığımız client'ı çağırıyoruz
+import axiosClient from '../api/axiosClient' 
 import { toast } from 'react-toastify'
 import { useNavigate } from 'react-router-dom'
 
 function AddProduct() {
   const navigate = useNavigate()
   
-  // --- STATE VE MANTIK KISMI (AYNEN KORUNDU) ---
+  // --- STATE VE MANTIK KISMI ---
   const [formData, setFormData] = useState({
     title: '', 
     description: '', 
@@ -44,11 +45,12 @@ function AddProduct() {
     }
 
     try {
-      const token = localStorage.getItem('token')
+      // DÜZELTME 2: Token'ı elle almana gerek yok, axiosClient sessionStorage'dan kendisi alıyor.
+      // Ayrıca URL'in başını yazmana gerek yok, baseURL zaten ayarlı.
       
-      await axios.post('http://127.0.0.1:5000/api/products/', data, {
-        headers: { 
-            Authorization: `Bearer ${token}`
+      await axiosClient.post('/products/', data, {
+        headers: {
+            'Content-Type': 'multipart/form-data' // Dosya yüklediğimiz için bunu belirtmek iyi olur
         }
       })
       
@@ -108,7 +110,7 @@ function AddProduct() {
                 </div>
             </div>
 
-            {/* Komisyon Hesaplama Kartı (Sadece Fiyat Girilince Görünür) */}
+            {/* Komisyon Hesaplama Kartı */}
             {formData.price && (
                 <div style={styles.calculationCard}>
                     <div style={styles.calcRow}>
@@ -135,14 +137,13 @@ function AddProduct() {
                     <option value="elektronik">📱 Elektronik</option>
                     <option value="mobilya">🛋️ Mobilya</option>
                     <option value="giyim">👕 Giyim</option>
-                    {/* DÜZELTME: 'g' harfi yerine kamp emojisi eklendi */}
                     <option value="outdoor">🏕️ Outdoor / Kamp</option> 
                     <option value="arac">🚗 Araç & Parça</option>
                     <option value="diger">📦 Diğer</option>
                 </select>
             </div>
 
-            {/* Fotoğraf Yükleme Alanı - Daha Modern */}
+            {/* Fotoğraf Yükleme Alanı */}
             <div style={styles.uploadBox}>
                 <div style={{textAlign: 'center'}}>
                     <span style={{fontSize: '2rem'}}>📷</span>
@@ -189,7 +190,7 @@ function AddProduct() {
 const styles = {
   container: {
     minHeight: '100vh',
-    backgroundColor: '#f0f2f5', // Hafif gri arka plan (modern görünüm)
+    backgroundColor: '#f0f2f5', 
     padding: '40px 20px',
     display: 'flex',
     justifyContent: 'center',
@@ -200,7 +201,7 @@ const styles = {
     maxWidth: '650px',
     backgroundColor: '#ffffff',
     borderRadius: '12px',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.08)', // Yumuşak, modern gölge
+    boxShadow: '0 4px 20px rgba(0,0,0,0.08)', 
     padding: '30px',
     boxSizing: 'border-box'
   },
