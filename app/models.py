@@ -58,31 +58,19 @@ class Product(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow) 
     
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
-    # İlişkiler
+
     images = db.relationship('ProductImage', backref='product', lazy=True, cascade="all, delete-orphan")
 
 class SwapOffer(db.Model):
     __tablename__ = 'swap_offers'
 
     id = db.Column(db.Integer, primary_key=True)
-    
-    # 1. Teklifi Yapan (Swap.py ile uyumlu olması için buyer_id yerine offerer_id yaptık)
     offerer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
-    # 2. Hedef Ürün (Karşı tarafın ürünü)
     target_product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
-    
-    # 3. Teklif Edilen Ürün (Benim ürünüm) - (İsim düzeltmesi: offering -> offered)
     offered_product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
-    
-    # 4. Mesaj (Swap.py içinde message gönderiyoruz, buraya ekledik)
     message = db.Column(db.Text, nullable=True)
-
     status = db.Column(db.String(20), default=OfferStatus.PENDING.value)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    # İlişkiler (Swap.py içindeki isimlerle eşleştirdik)
     offerer = db.relationship('User', foreign_keys=[offerer_id], backref='swap_offers_made')
     target_product = db.relationship('Product', foreign_keys=[target_product_id], backref='swap_offers_received')
     offered_product = db.relationship('Product', foreign_keys=[offered_product_id])
