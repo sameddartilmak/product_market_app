@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import axiosClient from '../api/axiosClient' 
 import { toast } from 'react-toastify'
 import MessageModal from '../components/MessageModal'
-import SwapOfferModal from '../components/SwapOfferModal' // YENİ EKLENDİ
+import SwapOfferModal from '../components/SwapOfferModal'
 import { AuthContext } from '../context/AuthContext'
 import Swal from 'sweetalert2'
 
@@ -11,6 +11,9 @@ import Swal from 'sweetalert2'
 import { DatePickerInput } from '@mantine/dates';
 import '@mantine/dates/styles.css'; 
 import 'dayjs/locale/tr'; 
+
+// Backend URL'ini buraya sabitliyoruz (veya env'den alabilirsin)
+const API_BASE_URL = "http://127.0.0.1:5000";
 
 function ProductDetail() {
   const { id } = useParams()
@@ -21,8 +24,8 @@ function ProductDetail() {
   const [loading, setLoading] = useState(true)
   
   // Modallar
-  const [isModalOpen, setIsModalOpen] = useState(false) // Mesaj Modalı
-  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false) // YENİ: Takas Modalı
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false)
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
@@ -31,8 +34,15 @@ function ProductDetail() {
   const [rentTotal, setRentTotal] = useState(0)
   const [rentDays, setRentDays] = useState(0)
   
-  // Backend'den gelecek dolu günlerin Zaman Damgaları (Timestamp)
   const [busyTimestamps, setBusyTimestamps] = useState([]); 
+
+  // --- YARDIMCI: Resim URL Düzeltici ---
+  // Eğer resim "/static" ile başlıyorsa başına backend adresini koyar
+  const getImageUrl = (path) => {
+      if (!path) return null;
+      if (path.startsWith('http')) return path; // Zaten tam link ise dokunma
+      return `${API_BASE_URL}${path}`;
+  }
 
   // --- 1. Ürün Bilgilerini Çek ---
   const fetchProduct = async () => {
@@ -46,7 +56,7 @@ function ProductDetail() {
     }
   }
 
-  // --- 2. Dolu Günleri Çek ve Sayısal Veriye Çevir ---
+  // --- 2. Dolu Günleri Çek ---
   const fetchAvailability = async () => {
     try {
         const res = await axiosClient.get(`/products/${id}/availability`);
@@ -56,7 +66,6 @@ function ProductDetail() {
             return new Date(year, month - 1, day).getTime();
         });
 
-        console.log("Dolu Tarihler (Timestamp):", timestamps);
         setBusyTimestamps(timestamps);
 
     } catch (error) {
@@ -70,19 +79,14 @@ function ProductDetail() {
   }, [id])
 
 
-  // --- YARDIMCI: HER TÜRLÜ TARİHİ STANDART DATE OBJESİNE ÇEVİRİR ---
+  // --- TARİH VE KİRALAMA MANTIKLARI ---
   const getNativeDate = (dateInput) => {
       if (!dateInput) return null;
-      if (typeof dateInput.toDate === 'function') {
-          return dateInput.toDate();
-      }
-      if (dateInput instanceof Date) {
-          return dateInput;
-      }
+      if (typeof dateInput.toDate === 'function') return dateInput.toDate();
+      if (dateInput instanceof Date) return dateInput;
       return new Date(dateInput);
   }
 
-  // --- TAKVİMDE GÜNLERİ ENGELLEME ---
   const isDateDisabled = (dateInput) => {
     const date = getNativeDate(dateInput);
     if (!date || isNaN(date.getTime())) return false; 
@@ -95,8 +99,6 @@ function ProductDetail() {
     return busyTimestamps.includes(checkTime);
   };
 
-
-  // --- HESAPLAMA VE ÇAKIŞMA KONTROLÜ ---
   useEffect(() => {
     const [rawStart, rawEnd] = dateRange;
     const start = getNativeDate(rawStart);
@@ -111,7 +113,6 @@ function ProductDetail() {
         
         while (currentDate <= end) {
             const currentTime = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()).getTime();
-            
             if (busyTimestamps.includes(currentTime)) {
                 isConflict = true;
                 break;
@@ -135,13 +136,12 @@ function ProductDetail() {
   }, [dateRange, product, busyTimestamps])
 
 
-  // --- SATIN ALMA İŞLEMİ ---
+  // --- BUTON FONKSİYONLARI ---
   const handleBuy = async () => {
     if (!user) {
         Swal.fire({ icon: 'warning', title: 'Giriş Yap', text: 'Lütfen giriş yapın.' }).then((res) => { if(res.isConfirmed) navigate('/login') })
         return
     }
-
     const result = await Swal.fire({
         title: 'Satın Alma Onayı',
         text: `${product.price} TL ödemeyi onaylıyor musunuz?`,
@@ -150,9 +150,7 @@ function ProductDetail() {
         confirmButtonColor: '#10b981',
         confirmButtonText: 'Satın Al'
     })
-
     if (!result.isConfirmed) return
-
     try {
         await axiosClient.post('/transactions/buy', { product_id: product.id })
         Swal.fire('Başarılı', 'Ürün satın alındı!', 'success');
@@ -162,13 +160,11 @@ function ProductDetail() {
     }
   }
 
-  // --- KİRALAMA FONKSİYONU ---
   const handleRent = async () => {
     if (!user) {
         Swal.fire({ icon: 'warning', title: 'Giriş Yap', text: 'Lütfen giriş yapın.' }).then((res) => { if(res.isConfirmed) navigate('/login') })
         return
     }
-
     const [rawStart, rawEnd] = dateRange;
     const start = getNativeDate(rawStart);
     const end = getNativeDate(rawEnd);
@@ -177,7 +173,6 @@ function ProductDetail() {
         toast.info('Lütfen başlangıç ve bitiş tarihlerini seçin.');
         return
     }
-
     const diffTime = Math.abs(end - start);
     const calculatedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
     const calculatedTotal = calculatedDays * product.price;
@@ -204,24 +199,19 @@ function ProductDetail() {
 
     try {
         Swal.fire({ title: 'İşleniyor...', didOpen: () => Swal.showLoading() })
-
         const formatDate = (d) => {
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
-
         const payload = {
             product_id: product.id,
             start_date: formatDate(start),
             end_date: formatDate(end)
         }
-
         await axiosClient.post('/transactions/rent', payload)
-        
         Swal.fire('Başarılı', 'Kiralama talebi oluşturuldu! Satıcı onayı bekleniyor.', 'success');
-        
         setDateRange([null, null]); 
         fetchAvailability(); 
         
@@ -259,11 +249,14 @@ function ProductDetail() {
                     {product.images && product.images.length > 0 ? (
                         <>
                             {product.images.length > 1 && <button onClick={prevSlide} style={styles.navBtnLeft}>❮</button>}
+                            
+                            {/* DÜZELTME BURADA: getImageUrl kullanıldı */}
                             <img 
-                                src={product.images[currentImageIndex]} 
+                                src={getImageUrl(product.images[currentImageIndex])} 
                                 alt={product.title} 
                                 style={{ ...styles.mainImage, filter: isSold ? 'grayscale(100%)' : 'none' }} 
                             />
+                            
                             {product.images.length > 1 && <button onClick={nextSlide} style={styles.navBtnRight}>❯</button>}
                         </>
                     ) : (
@@ -273,8 +266,11 @@ function ProductDetail() {
                 {product.images && product.images.length > 1 && (
                     <div style={styles.thumbnailRow}>
                         {product.images.map((img, index) => (
+                            // DÜZELTME BURADA: getImageUrl kullanıldı
                             <img 
-                                key={index} src={img} onClick={() => selectImage(index)}
+                                key={index} 
+                                src={getImageUrl(img)} 
+                                onClick={() => selectImage(index)}
                                 style={{...styles.thumbnail, borderColor: currentImageIndex === index ? '#4f46e5' : 'transparent', opacity: currentImageIndex === index ? 1 : 0.6}} 
                             />
                         ))}
@@ -337,11 +333,9 @@ function ProductDetail() {
                                 <button onClick={handleBuy} style={styles.btnPrimaryGreen}>Güvenle Satın Al</button>
                             )}
                             
-                            {/* --- YENİ EKLENEN KISIM: TAKAS BUTONU --- */}
                             <button onClick={() => setIsSwapModalOpen(true)} style={styles.btnSwap}>
                                 🔄 Takas Teklif Et
                             </button>
-                            {/* -------------------------------------- */}
 
                             <button onClick={() => setIsModalOpen(true)} style={styles.btnSecondary}>💬 Satıcıya Mesaj At</button>
                         </>
@@ -358,7 +352,6 @@ function ProductDetail() {
             />
         )}
 
-        {/* --- YENİ EKLENEN KISIM: TAKAS TEKLİF MODALI --- */}
         {isSwapModalOpen && (
             <SwapOfferModal 
                 isOpen={isSwapModalOpen} 
@@ -366,7 +359,6 @@ function ProductDetail() {
                 targetProduct={product} 
             />
         )}
-        {/* ----------------------------------------------- */}
 
       </div>
     </div>
