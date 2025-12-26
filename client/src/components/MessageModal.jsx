@@ -1,6 +1,6 @@
-// client/src/components/MessageModal.jsx
 import { useState } from 'react'
-import axios from 'axios'
+// DÜZELTME 1: Standart axios yerine, ayarlı client'ı import ediyoruz
+import axiosClient from '../api/axiosClient' 
 import { toast } from 'react-toastify'
 
 function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) {
@@ -15,20 +15,17 @@ function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) 
         return
     }
 
-    const token = localStorage.getItem('token')
-    if (!token) {
-        toast.error("Giriş yapmalısınız!")
-        return
-    }
-
     setSending(true)
     try {
-        await axios.post('http://127.0.0.1:5000/api/messages/send', {
+        // DÜZELTME 2: 
+        // - axiosClient.post kullanıyoruz. 
+        // - Adresi sadece '/messages/send' yazıyoruz (axiosClient otomatik olarak http://127.0.0.1:5000/api ekler).
+        // - Header (Token) eklemeye gerek yok, axiosClient onu da otomatik yapar.
+        
+        await axiosClient.post('/messages/send', {
             receiver_id: receiverId,
             product_id: productId,
             content: content
-        }, {
-            headers: { Authorization: `Bearer ${token}` }
         })
 
         toast.success("Mesaj gönderildi! 📨")
@@ -36,18 +33,20 @@ function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) 
         onClose() 
 
     } catch (error) {
-        toast.error("Mesaj gönderilemedi.")
+        console.error("Mesaj Hatası:", error);
+        // Backend'den gelen hata mesajını gösterelim
+        const errMsg = error.response?.data?.message || "Mesaj gönderilemedi.";
+        toast.error(errMsg)
     } finally {
         setSending(false)
     }
   }
 
-  // --- TASARIM KISMI ---
+  // --- TASARIM KISMI (AYNEN KORUNDU) ---
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
         
-        {/* Başlık ve Kapat Butonu */}
         <div style={styles.header}>
             <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
                 <span style={{fontSize:'1.5rem'}}>💬</span>
@@ -56,7 +55,6 @@ function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) 
             <button onClick={onClose} style={styles.closeBtn}>×</button>
         </div>
         
-        {/* Ürün Bilgisi Kartı (Context) */}
         <div style={styles.productBadge}>
             <span style={{color:'#666', fontSize:'0.85rem'}}>İlgili Ürün:</span>
             <div style={styles.productTitle}>
@@ -64,7 +62,6 @@ function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) 
             </div>
         </div>
 
-        {/* Mesaj Yazma Alanı */}
         <div style={{marginBottom: '20px'}}>
             <label style={styles.label}>Mesajınız</label>
             <textarea 
@@ -76,7 +73,6 @@ function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) 
             ></textarea>
         </div>
 
-        {/* Aksiyon Butonları */}
         <div style={styles.footer}>
             <button onClick={onClose} style={styles.cancelBtn}>
                 Vazgeç
@@ -90,13 +86,13 @@ function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) 
   )
 }
 
-// --- MODERN STYLES ---
+// --- STYLES ---
 const styles = {
   overlay: {
     position: 'fixed', 
     top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)', // Biraz daha koyu
-    backdropFilter: 'blur(5px)',        // Arka planı bulanıklaştırır (Buzlu cam etkisi)
+    backgroundColor: 'rgba(0,0,0,0.6)', 
+    backdropFilter: 'blur(5px)',       
     display: 'flex', 
     alignItems: 'center', 
     justifyContent: 'center',
@@ -108,8 +104,8 @@ const styles = {
     width: '90%', 
     maxWidth: '500px',
     padding: '25px', 
-    borderRadius: '16px', // Daha oval köşeler
-    boxShadow: '0 20px 60px rgba(0,0,0,0.2)', // Derinlik katan gölge
+    borderRadius: '16px', 
+    boxShadow: '0 20px 60px rgba(0,0,0,0.2)', 
     display: 'flex',
     flexDirection: 'column',
     position: 'relative'
@@ -132,11 +128,11 @@ const styles = {
     background: '#f1f3f5', 
     border: 'none', 
     fontSize: '1.5rem', 
-    cursor: 'pointer',
+    cursor: 'pointer', 
     color: '#868e96',
     width: '32px',
     height: '32px',
-    borderRadius: '50%', // Yuvarlak kapatma butonu
+    borderRadius: '50%', 
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -169,7 +165,7 @@ const styles = {
     border: '1px solid #dde1e7',
     fontSize: '0.95rem', 
     fontFamily: 'inherit', 
-    resize: 'none', // Boyutlandırmayı kapattık, daha temiz durur
+    resize: 'none', 
     outline: 'none',
     boxSizing: 'border-box',
     backgroundColor: '#fff',
@@ -186,14 +182,14 @@ const styles = {
     backgroundColor: 'transparent', 
     border: '1px solid #dee2e6', 
     borderRadius: '8px', 
-    cursor: 'pointer',
+    cursor: 'pointer', 
     color: '#6c757d',
     fontWeight: '500',
     fontSize: '0.95rem'
   },
   sendBtn: { 
     padding: '10px 24px', 
-    backgroundColor: '#3498db', // Ana tema rengi
+    backgroundColor: '#3498db', 
     color: 'white', 
     border: 'none', 
     borderRadius: '8px', 
