@@ -1,85 +1,99 @@
 from flask import Blueprint, jsonify, request
 from datetime import datetime
-from app.models import Product, Transaction, User
+from app.models import Product, Transaction, User, SwapOffer
 from app import db
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_cors import cross_origin
+from operator import itemgetter 
 
 transactions_bp = Blueprint('transactions', __name__)
 
-# --- 1. SATIN ALMA İŞLEMİ ---
+# --- 1. TAKAS TEKLİFİ OLUŞTURMA ---
+@transactions_bp.route('/swap-offer', methods=['POST', 'OPTIONS'])
+@cross_origin()
+@jwt_required()
+def create_swap_offer():
+    try:
+        current_user_id = int(get_jwt_identity())
+        data = request.get_json()
+
+        target_product_id = data.get('target_product_id')
+        offered_product_id = data.get('offered_product_id')
+        message = data.get('message', '')
+
+        if not target_product_id or not offered_product_id:
+            return jsonify({'message': 'Eksik veri.'}), 400
+
+        existing_offer = SwapOffer.query.filter_by(
+            target_product_id=target_product_id, 
+            offered_product_id=offered_product_id,
+            status='PENDING'
+        ).first()
+
+        if existing_offer:
+            return jsonify({'message': 'Bu ürün için zaten bekleyen bir teklifiniz var.'}), 400
+
+        new_offer = SwapOffer(
+            offerer_id=current_user_id,
+            target_product_id=target_product_id,
+            offered_product_id=offered_product_id,
+            message=message,
+            status='PENDING'
+        )
+
+        db.session.add(new_offer)
+        db.session.commit()
+
+        return jsonify({'message': 'Takas teklifi başarıyla gönderildi.'}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Takas Hatası: {e}")
+        return jsonify({'message': 'Sunucu hatası.', 'error': str(e)}), 500
+
+
+# --- 2. SATIN ALMA ---
 @transactions_bp.route('/buy', methods=['POST', 'OPTIONS'])
 @cross_origin()
 @jwt_required()
 def buy_product():
-    """
-    Bir ürünü satın alır.
-    Status 'sold' yapılır.
-    """
     current_user_id = int(get_jwt_identity())
-    
     data = request.get_json()
     product_id = data.get('product_id')
     
-    if not product_id:
-        return jsonify({'message': 'product_id zorunludur.'}), 400
+    if not product_id: return jsonify({'message': 'product_id zorunludur.'}), 400
 
-    # A) Ürünü Doğrula
     product = Product.query.get(product_id)
+    if not product: return jsonify({'message': 'Ürün bulunamadı.'}), 404
+    if product.status != 'available': return jsonify({'message': 'Bu ürün artık satışta değil.'}), 400
+    if product.listing_type == 'rent': return jsonify({'message': 'Bu ürün sadece kiralıktır.'}), 400
+    if product.owner_id == current_user_id: return jsonify({'message': 'Kendi ürününüzü alamazsınız.'}), 400
 
-    if not product:
-        return jsonify({'message': 'Ürün bulunamadı.'}), 404
-    
-    # B) Status Kontrolü
-    if product.status != 'available':
-        return jsonify({'message': 'Bu ürün artık satışta değil (Satılmış veya Kiralanmış).'}), 400
-
-    # C) İlan Tipi Kontrolü
-    if product.listing_type == 'rent':
-        return jsonify({'message': 'Bu ürün sadece kiralıktır, satın alınamaz.'}), 400
-
-    # D) Kendine Satış Engeli
-    if product.owner_id == current_user_id:
-        return jsonify({'message': 'Kendi ürününüzü satın alamazsınız.'}), 400
-
-    # E) İşlemi Gerçekleştir
     try:
-        # Ürünü 'satıldı' olarak işaretle
         product.status = 'sold' 
-        
         new_transaction = Transaction(
             product_id=product.id,
             buyer_id=current_user_id,
             seller_id=product.owner_id,
             transaction_type='SALE',
             price=product.price,
-            status='COMPLETED' # Satın alma direkt tamamlandı
+            status='COMPLETED'
         )
-        
         db.session.add(new_transaction)
         db.session.commit()
 
-        return jsonify({
-            'message': f'Satın alma işlemi başarılı. (Ürün: {product.title})',
-            'transaction_id': new_transaction.id,
-            'total_price_paid': float(new_transaction.price)
-        }), 201
-
+        return jsonify({'message': 'Satın alma başarılı.', 'transaction_id': new_transaction.id}), 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': 'İşlem sırasında hata oluştu.', 'error': str(e)}), 500
+        return jsonify({'message': 'Hata oluştu.', 'error': str(e)}), 500
 
 
-# --- 2. KİRALAMA İŞLEMİ ---
+# --- 3. KİRALAMA ---
 @transactions_bp.route('/rent', methods=['POST', 'OPTIONS'])
 @cross_origin()
 @jwt_required()
 def rent_product():
-    """
-    Bir ürünü belirli tarihler için kiralar.
-    """
     current_user_id = int(get_jwt_identity())
-          
     data = request.get_json()
 
     product_id = data.get('product_id')
@@ -87,61 +101,34 @@ def rent_product():
     end_date_str = data.get('end_date')   
 
     if not all([product_id, start_date_str, end_date_str]):
-        return jsonify({'message': 'Eksik bilgi: product_id, start_date ve end_date zorunludur.'}), 400
+        return jsonify({'message': 'Eksik bilgi.'}), 400
 
-    # A) Tarih Formatı ve Mantığı
     try:
-        # Frontend'den '2025-12-21T15:00:00.000Z' gelirse sadece tarihi al
         s_date_clean = str(start_date_str).split('T')[0]
         e_date_clean = str(end_date_str).split('T')[0]
-
-        # DateTime objesine çevir (DB uyumu için)
         start_date = datetime.strptime(s_date_clean, '%Y-%m-%d')
         end_date = datetime.strptime(e_date_clean, '%Y-%m-%d')
     except ValueError:
-        return jsonify({'message': 'Tarih formatı geçersiz. "YYYY-MM-DD" olmalı.'}), 400
+        return jsonify({'message': 'Tarih formatı geçersiz.'}), 400
 
-    if start_date.date() < datetime.utcnow().date():
-        return jsonify({'message': 'Geçmişe dönük kiralama yapılamaz.'}), 400
-    if end_date <= start_date:
-        return jsonify({'message': 'Bitiş tarihi başlangıçtan sonra olmalıdır.'}), 400
-
-    # B) Ürün Doğrulama
     product = Product.query.get(product_id)
-    if not product:
-        return jsonify({'message': 'Ürün bulunamadı.'}), 404
-
-    # C) Status ve Tip Kontrolü
-    if product.status != 'available':
-        return jsonify({'message': 'Bu ürün şu an müsait değil.'}), 400
+    if not product: return jsonify({'message': 'Ürün bulunamadı.'}), 404
+    if product.status != 'available': return jsonify({'message': 'Ürün müsait değil.'}), 400
     
-    if product.listing_type == 'sale':
-        return jsonify({'message': 'Bu ürün sadece satılıktır, kiralanamaz.'}), 400
-
-    if product.owner_id == current_user_id:
-        return jsonify({'message': 'Kendi ürününüzü kiralayamazsınız.'}), 400
-
-    # --- D) ÇAKIŞMA KONTROLÜ (Oluştururken) ---
-    # Eğer bu tarihlerde ONAYLANMIŞ (APPROVED) başka bir işlem varsa izin verme.
     conflicting_approved = Transaction.query.filter(
         Transaction.product_id == product_id,
-        Transaction.status == 'APPROVED', # Sadece onaylılar engeldir
+        Transaction.status == 'APPROVED',
         Transaction.start_date <= end_date,
         Transaction.end_date >= start_date
     ).first()
 
     if conflicting_approved:
-        return jsonify({'message': 'Bu tarihlerde ürün zaten kiralanmış (Onaylı Rezervasyon). Lütfen başka tarih seçin.'}), 400
+        return jsonify({'message': 'Bu tarihlerde ürün dolu.'}), 400
     
-    # E) Fiyat Hesaplama
-    daily_price = product.price 
     num_days = (end_date - start_date).days
+    if num_days == 0: num_days = 1
+    total_price = num_days * product.price
     
-    if num_days == 0: num_days = 1 
-    
-    total_price = num_days * daily_price
-    
-    # F) İşlemi Kaydet
     try:
         new_transaction = Transaction(
             product_id=product_id,
@@ -149,161 +136,225 @@ def rent_product():
             seller_id=product.owner_id,
             transaction_type='RENT',
             price=total_price,
-            status='PENDING', # Onay bekliyor
+            status='PENDING',
             start_date=start_date,
             end_date=end_date
         )
-        
         db.session.add(new_transaction)
         db.session.commit()
-        
-        return jsonify({
-            'message': 'Kiralama talebi oluşturuldu. Satıcı onayı bekleniyor.',
-            'transaction_id': new_transaction.id,
-            'total_price': float(total_price),
-            'days': num_days
-        }), 201
-
+        return jsonify({'message': 'Kiralama talebi oluşturuldu.', 'transaction_id': new_transaction.id}), 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': 'Kiralama başarısız.', 'error': str(e)}), 500
+        return jsonify({'message': 'Hata oluştu.', 'error': str(e)}), 500
 
 
-# --- 3. GELEN TALEPLERİ LİSTELEME (INCOMING) ---
+# --- 4. GELEN TALEPLER (INCOMING) ---
 @transactions_bp.route('/incoming', methods=['GET'])
 @cross_origin()
 @jwt_required()
 def get_incoming_requests():
     current_user_id = int(get_jwt_identity())
-    
-    # Satıcısı BEN olduğum işlemler (Bana gelenler)
-    transactions = Transaction.query.filter_by(seller_id=current_user_id).order_by(Transaction.id.desc()).all()
-    
     results = []
+
+    # A) Satın Alma / Kiralama
+    transactions = Transaction.query.filter_by(seller_id=current_user_id).all()
     for t in transactions:
         product = Product.query.get(t.product_id)
         buyer = User.query.get(t.buyer_id)
         
-        product_image = None
-        if product:
-            # Modelde 'image_url' property'si veya alanı varsa onu al
-            product_image = getattr(product, 'image_url', None)
-            # Eğer image_url boşsa ve images ilişkisi varsa oradan al (Yedek)
-            if not product_image and hasattr(product, 'images') and product.images:
-                 product_image = product.images[0].image_url
-
         results.append({
+            'type': 'transaction',
             'id': t.id,
             'product_title': product.title if product else 'Silinmiş Ürün',
-            'product_image': product_image,
-            'buyer_name': buyer.username if buyer else 'Bilinmeyen Kullanıcı',
-            'buyer_username': buyer.username if buyer else 'Bilinmeyen',
+            'product_image': product.image_url if product else None,
+            'buyer_name': buyer.username if buyer else 'Bilinmeyen',
+            'other_party_name': buyer.username if buyer else 'Bilinmeyen',
             'transaction_type': t.transaction_type, 
             'status': t.status, 
             'price': float(t.price),
             'start_date': t.start_date.strftime('%Y-%m-%d') if t.start_date else None,
             'end_date': t.end_date.strftime('%Y-%m-%d') if t.end_date else None,
-            'created_at': t.created_at.strftime('%Y-%m-%d %H:%M') if hasattr(t, 'created_at') else None
+            'date': t.created_at.strftime('%Y-%m-%d %H:%M'),
+            'message': None
         })
 
+    # B) Takas Teklifleri
+    swap_offers = SwapOffer.query.join(Product, SwapOffer.target_product_id == Product.id)\
+                  .filter(Product.owner_id == current_user_id).all()
+    
+    for s in swap_offers:
+        target_p = Product.query.get(s.target_product_id)
+        offered_p = Product.query.get(s.offered_product_id)
+        offerer = User.query.get(s.offerer_id)
+
+        results.append({
+            'type': 'swap_offer',
+            'id': s.id,
+            'product_title': target_p.title if target_p else 'Silinmiş',
+            'product_image': target_p.image_url if target_p else None,
+            'buyer_name': offerer.username if offerer else 'Bilinmeyen',
+            'other_party_name': offerer.username if offerer else 'Bilinmeyen',
+            'transaction_type': 'swap',
+            'status': s.status,
+            'price': 0,
+            'start_date': None,
+            'end_date': None,
+            'swap_product_title': offered_p.title if offered_p else 'Silinmiş',
+            'swap_product_image': offered_p.image_url if offered_p else None,
+            'date': s.created_at.strftime('%Y-%m-%d %H:%M'),
+            'message': s.message 
+        })
+
+    results.sort(key=itemgetter('date'), reverse=True)
     return jsonify(results), 200
 
 
-# --- 4. GİDEN TALEPLERİ LİSTELEME (OUTGOING) - YENİ EKLENEN KISIM ---
+# --- 5. GİDEN TALEPLER (OUTGOING) ---
 @transactions_bp.route('/outgoing', methods=['GET'])
 @cross_origin()
 @jwt_required()
 def get_outgoing_requests():
     current_user_id = int(get_jwt_identity())
-    
-    # Alıcısı (Talep Edeni) BEN olduğum işlemler (Benim gönderdiklerim)
-    transactions = Transaction.query.filter_by(buyer_id=current_user_id).order_by(Transaction.id.desc()).all()
-    
     results = []
+
+    # A) Satın Alma / Kiralama
+    transactions = Transaction.query.filter_by(buyer_id=current_user_id).all()
     for t in transactions:
         product = Product.query.get(t.product_id)
         seller = User.query.get(t.seller_id)
-        
-        product_image = None
-        if product:
-            product_image = getattr(product, 'image_url', None)
-            if not product_image and hasattr(product, 'images') and product.images:
-                 product_image = product.images[0].image_url
 
         results.append({
+            'type': 'transaction',
             'id': t.id,
-            'product_title': product.title if product else 'Silinmiş Ürün',
-            'product_image': product_image,
-            'seller_name': seller.username if seller else 'Bilinmeyen Satıcı',
+            'product_title': product.title if product else 'Silinmiş',
+            'product_image': product.image_url if product else None,
+            'seller_name': seller.username if seller else 'Bilinmeyen',
+            'other_party_name': seller.username if seller else 'Bilinmeyen',
             'transaction_type': t.transaction_type, 
             'status': t.status, 
             'price': float(t.price),
             'start_date': t.start_date.strftime('%Y-%m-%d') if t.start_date else None,
             'end_date': t.end_date.strftime('%Y-%m-%d') if t.end_date else None,
-            'created_at': t.created_at.strftime('%Y-%m-%d %H:%M') if hasattr(t, 'created_at') else None,
-            # Takas bilgileri (Varsa)
-            'swap_product_title': t.swap_product.title if hasattr(t, 'swap_product') and t.swap_product else None
+            'date': t.created_at.strftime('%Y-%m-%d %H:%M'),
+            'message': None
         })
 
+    # B) Takas Teklifleri
+    my_swaps = SwapOffer.query.filter_by(offerer_id=current_user_id).all()
+    
+    for s in my_swaps:
+        target_p = Product.query.get(s.target_product_id)
+        offered_p = Product.query.get(s.offered_product_id)
+        target_owner = User.query.get(target_p.owner_id) if target_p else None
+
+        results.append({
+            'type': 'swap_offer',
+            'id': s.id,
+            'product_title': target_p.title if target_p else 'Silinmiş',
+            'product_image': target_p.image_url if target_p else None,
+            'seller_name': target_owner.username if target_owner else 'Bilinmeyen',
+            'other_party_name': target_owner.username if target_owner else 'Bilinmeyen',
+            'transaction_type': 'swap',
+            'status': s.status,
+            'price': 0,
+            'start_date': None,
+            'end_date': None,
+            'swap_product_title': offered_p.title if offered_p else 'Silinmiş',
+            'swap_product_image': offered_p.image_url if offered_p else None,
+            'date': s.created_at.strftime('%Y-%m-%d %H:%M'),
+            'message': s.message 
+        })
+
+    results.sort(key=itemgetter('date'), reverse=True)
     return jsonify(results), 200
 
 
-# --- 5. TALEP ONAYLA / REDDET ---
-@transactions_bp.route('/<int:transaction_id>/respond', methods=['POST'])
+# --- 6. TALEP ONAYLA / REDDET (GÜNCELLENDİ: Takas Tamamlama & Ürün Kaldırma) ---
+# --- 6. TALEP ONAYLA / REDDET ---
+@transactions_bp.route('/<int:id>/respond', methods=['POST'])
 @cross_origin()
 @jwt_required()
-def respond_to_request(transaction_id):
+def respond_to_request(id):
     current_user_id = int(get_jwt_identity())
     data = request.get_json()
-    action = data.get('action') # 'approve' veya 'reject'
+    action = data.get('action') 
 
-    transaction = Transaction.query.get_or_404(transaction_id)
+    print(f"--- Talep Yanıtlama Başladı (ID: {id}, Action: {action}) ---") # DEBUG 1
 
-    # Güvenlik: Sadece satıcı onaylayabilir
-    if transaction.seller_id != current_user_id:
-        return jsonify({'message': 'Bu işlem için yetkiniz yok.'}), 403
+    # Önce Transaction'da ara
+    transaction = Transaction.query.get(id)
+    target_record = None
+    record_type = None
 
+    if transaction:
+        target_record = transaction
+        record_type = 'transaction'
+    else:
+        # Yoksa SwapOffer'da ara
+        swap = SwapOffer.query.get(id)
+        if swap:
+            target_record = swap
+            record_type = 'swap'
+    
+    print(f"Tespit Edilen Kayıt Tipi: {record_type}") # DEBUG 2
+
+    if not target_record:
+        return jsonify({'message': 'Kayıt bulunamadı.'}), 404
+
+    # YETKİ KONTROLÜ
+    if record_type == 'transaction':
+        if target_record.seller_id != current_user_id:
+            return jsonify({'message': 'Yetkisiz işlem.'}), 403
+    elif record_type == 'swap':
+        target_p = Product.query.get(target_record.target_product_id)
+        if target_p.owner_id != current_user_id:
+            return jsonify({'message': 'Yetkisiz işlem.'}), 403
+
+    # İŞLEM
     if action == 'approve':
-        # 1. Önce tekrar kontrol et: Bu tarihlerde ONAYLANMIŞ başka işlem var mı?
-        overlap_check = Transaction.query.filter(
-            Transaction.product_id == transaction.product_id,
-            Transaction.id != transaction.id,
-            Transaction.status == 'APPROVED',
-            Transaction.start_date <= transaction.end_date,
-            Transaction.end_date >= transaction.start_date
-        ).first()
-
-        if overlap_check:
-            return jsonify({'message': 'Hata: Bu tarihler için başka bir işlem az önce onaylanmış.'}), 409
-
-        # 2. İşlemi Onayla
-        transaction.status = 'APPROVED'
-
-        # 3. Çakışan diğer "PENDING" (Bekleyen) talepleri bul
-        conflicting_pending = Transaction.query.filter(
-            Transaction.product_id == transaction.product_id,
-            Transaction.id != transaction.id,       # Kendisi hariç
-            Transaction.status == 'PENDING',        # Sadece bekleyenler
-            Transaction.start_date <= transaction.end_date, # Çakışma mantığı
-            Transaction.end_date >= transaction.start_date
-        ).all()
-
-        # 4. Hepsini REDDET
-        count_rejected = 0
-        for conflict in conflicting_pending:
-            conflict.status = 'REJECTED'
-            count_rejected += 1
-            print(f"Otomatik Reddedilen Talep ID: {conflict.id}")
+        target_record.status = 'APPROVED'
+        print("Kayıt durumu APPROVED yapıldı.") # DEBUG 3
         
+        # --- EĞER TAKASSA VE ONAYLANDIYSA ---
+        if record_type == 'swap':
+            print("Takas işlemi algılandı, Transaction oluşturuluyor...") # DEBUG 4
+            try:
+                # 1. Ürünleri 'sold' (Satıldı) yap
+                target_p = Product.query.get(target_record.target_product_id)
+                offered_p = Product.query.get(target_record.offered_product_id)
+                
+                if target_p: target_p.status = 'sold'
+                if offered_p: offered_p.status = 'sold'
+
+                # 2. Transaction Kaydı Oluştur
+                new_transaction = Transaction(
+                    product_id=target_record.target_product_id,
+                    buyer_id=target_record.offerer_id, # Teklifi yapan 'alıcı' olur
+                    seller_id=current_user_id,         # Onaylayan 'satıcı' olur
+                    transaction_type='SWAP',           # Tipi: SWAP
+                    status='COMPLETED',                # Durumu: COMPLETED
+                    price=0                            # Fiyat: 0
+                )
+                
+                db.session.add(new_transaction)
+                print("Yeni Transaction session'a eklendi.") # DEBUG 5
+
+            except Exception as e:
+                print(f"!!! KRİTİK HATA (Transaction Oluşamadı): {e}") # DEBUG 6
+                db.session.rollback()
+                return jsonify({'message': 'Takas onaylanırken hata oluştu.', 'error': str(e)}), 500
+
     elif action == 'reject':
-        transaction.status = 'REJECTED'
+        target_record.status = 'REJECTED'
     else:
         return jsonify({'message': 'Geçersiz işlem.'}), 400
-
-    db.session.commit()
     
-    msg = f"Talep {action} edildi."
-    if action == 'approve' and count_rejected > 0:
-        msg += f" (Çakışan {count_rejected} diğer talep otomatik reddedildi.)"
+    try:
+        db.session.commit()
+        print("Veritabanı Commit Başarılı.") # DEBUG 7
+    except Exception as e:
+        print(f"!!! COMMIT HATASI: {e}") # DEBUG 8
+        db.session.rollback()
+        return jsonify({'message': 'Veritabanı hatası.', 'error': str(e)}), 500
 
-    return jsonify({'message': msg, 'new_status': transaction.status}), 200
+    return jsonify({'message': f'Talep {action} edildi.', 'new_status': target_record.status}), 200

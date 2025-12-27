@@ -1,5 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Modal, Button, ScrollArea, Group, Text, Image, Checkbox, Textarea } from '@mantine/core';
+import { 
+    Modal, 
+    Button, 
+    ScrollArea, 
+    Group, 
+    Text, 
+    Image, 
+    Textarea, 
+    SimpleGrid, 
+    Card, 
+    Badge,
+    Stack
+} from '@mantine/core';
 import axiosClient from '../api/axiosClient';
 import { toast } from 'react-toastify';
 
@@ -37,7 +49,7 @@ function SwapOfferModal({ isOpen, onClose, targetProduct }) {
         }
 
         try {
-            await axiosClient.post('/swap/offer', {
+            await axiosClient.post('/transactions/swap-offer', { // Endpointi kontrol ettim, genelde /swap-offer kullanılır
                 target_product_id: targetProduct.id,
                 offered_product_id: selectedProductId,
                 message: message
@@ -49,66 +61,98 @@ function SwapOfferModal({ isOpen, onClose, targetProduct }) {
         }
     };
 
-    // Resim URL Düzeltici
     const getImageUrl = (url) => {
         if (!url) return null;
         return url.startsWith('http') ? url : `http://127.0.0.1:5000${url}`;
     };
 
     return (
-        <Modal opened={isOpen} onClose={onClose} title="🔄 Takas Teklifi Yap" size="lg">
-            <Text size="sm" mb="md" c="dimmed">
-                <strong>{targetProduct?.title}</strong> için hangi ürününüzü teklif etmek istersiniz?
-            </Text>
+        <Modal 
+            opened={isOpen} 
+            onClose={onClose} 
+            title={<Text fw={700} size="lg">🔄 Takas Teklifi Yap</Text>} 
+            size="lg"
+            centered
+        >
+            <Stack gap="sm">
+                <Text size="sm" c="dimmed">
+                    <strong>{targetProduct?.title}</strong> için hangi ürününüzü teklif etmek istersiniz?
+                </Text>
 
-            <ScrollArea h={300} type="always" offsetScrollbars>
-                {loading ? <Text>Yükleniyor...</Text> : (
-                    myProducts.length === 0 ? (
-                        <Text c="red">Takas yapabileceğiniz müsait bir ürününüz yok.</Text>
+                <ScrollArea h={400} type="always" offsetScrollbars style={{ border: '1px solid #eee', borderRadius: '8px', padding: '10px' }}>
+                    {loading ? (
+                        <Text ta="center" mt="xl">Yükleniyor...</Text>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {myProducts.map(prod => (
-                                <div 
-                                    key={prod.id} 
-                                    onClick={() => setSelectedProductId(prod.id)}
-                                    style={{
-                                        padding: '10px',
-                                        border: selectedProductId === prod.id ? '2px solid #228be6' : '1px solid #eee',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '15px'
-                                    }}
-                                >
-                                    <Image 
-                                        src={getImageUrl(prod.image_url)} 
-                                        width={50} height={50} radius="md" 
-                                        fallbackSrc="https://placehold.co/50"
-                                    />
-                                    <div style={{ flex: 1 }}>
-                                        <Text fw={500}>{prod.title}</Text>
-                                        <Text size="xs" c="dimmed">{prod.category}</Text>
-                                    </div>
-                                    {selectedProductId === prod.id && <span>✅</span>}
-                                </div>
-                            ))}
-                        </div>  
-                    )
-                )}
-            </ScrollArea>
+                        myProducts.length === 0 ? (
+                            <Stack align="center" mt="xl">
+                                <Text size="3rem">📦</Text>
+                                <Text c="dimmed">Takas yapabileceğiniz aktif bir ürününüz yok.</Text>
+                            </Stack>
+                        ) : (
+                            // GÜZELLEŞTİRME BURADA: SimpleGrid ve Card yapısı
+                            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                                {myProducts.map(prod => {
+                                    const isSelected = selectedProductId === prod.id;
+                                    return (
+                                        <Card 
+                                            key={prod.id} 
+                                            padding="sm" 
+                                            radius="md" 
+                                            withBorder
+                                            onClick={() => setSelectedProductId(prod.id)}
+                                            style={{ 
+                                                cursor: 'pointer',
+                                                borderColor: isSelected ? '#228be6' : '#dee2e6',
+                                                borderWidth: isSelected ? '2px' : '1px',
+                                                backgroundColor: isSelected ? '#f0f9ff' : 'white',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            <Card.Section>
+                                                <Image 
+                                                    src={getImageUrl(prod.image_url)} 
+                                                    height={140} 
+                                                    alt={prod.title} 
+                                                    fallbackSrc="https://placehold.co/400x200?text=Resim+Yok"
+                                                />
+                                            </Card.Section>
 
-            <Textarea 
-                placeholder="Satıcıya bir not ekle (Opsiyonel)"
-                mt="md"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-            />
+                                            <Group justify="space-between" mt="md" mb="xs">
+                                                <Text fw={600} truncate>{prod.title}</Text>
+                                                {isSelected && <Badge color="blue" variant="light">Seçildi</Badge>}
+                                            </Group>
 
-            <Group justify="flex-end" mt="md">
-                <Button variant="default" onClick={onClose}>İptal</Button>
-                <Button onClick={handleSendOffer} disabled={!selectedProductId}>Teklifi Gönder</Button>
-            </Group>
+                                            <Group justify="space-between" align="center">
+                                                <Badge size="sm" color="gray" variant="outline">{prod.category}</Badge>
+                                                <Text size="sm" fw={700} c="blue">{prod.price} TL</Text>
+                                            </Group>
+                                        </Card>
+                                    );
+                                })}
+                            </SimpleGrid>
+                        )
+                    )}
+                </ScrollArea>
+
+                <Textarea 
+                    label="Satıcıya Not (Opsiyonel)"
+                    placeholder="Merhaba, bu ürünle takas düşünür müsün? Üstüne nakit de verebilirim..."
+                    minRows={3}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                />
+
+                <Group justify="flex-end" mt="sm">
+                    <Button variant="default" onClick={onClose}>İptal</Button>
+                    <Button 
+                        onClick={handleSendOffer} 
+                        disabled={!selectedProductId}
+                        color="blue"
+                    >
+                        Teklifi Gönder 🚀
+                    </Button>
+                </Group>
+            </Stack>
         </Modal>
     );
 }

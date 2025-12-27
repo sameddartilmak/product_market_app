@@ -1,22 +1,21 @@
 import { useEffect, useState } from 'react';
 import axiosClient from '../api/axiosClient';
 import { toast } from 'react-toastify';
-import { Container, Title, Card, Badge, Group, Text, Button, Stack, Avatar, Grid, Tabs } from '@mantine/core';
+import { Container, Title, Card, Badge, Group, Text, Button, Stack, Avatar, Grid, Tabs, Blockquote } from '@mantine/core';
 import Swal from 'sweetalert2';
 
 function Requests() {
     const [incomingRequests, setIncomingRequests] = useState([]);
-    const [outgoingRequests, setOutgoingRequests] = useState([]); // Giden taleplerim
+    const [outgoingRequests, setOutgoingRequests] = useState([]); 
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('incoming'); // 'incoming' veya 'outgoing'
+    const [activeTab, setActiveTab] = useState('incoming');
 
     const fetchAllRequests = async () => {
         setLoading(true);
         try {
-            // Promise.all ile iki isteği aynı anda atıyoruz
             const [resIncoming, resOutgoing] = await Promise.all([
                 axiosClient.get('/transactions/incoming'),
-                axiosClient.get('/transactions/outgoing') // Backend'de bu rotanın olması lazım
+                axiosClient.get('/transactions/outgoing')
             ]);
 
             setIncomingRequests(resIncoming.data);
@@ -34,6 +33,8 @@ function Requests() {
     }, []);
 
     const handleStatusUpdate = async (id, status) => {
+
+ 
         const actionText = status === 'approved' ? 'Onaylamak' : 'Reddetmek';
         const confirmBtnColor = status === 'approved' ? '#10b981' : '#ef4444';
         const backendAction = status === 'approved' ? 'approve' : 'reject';
@@ -53,14 +54,13 @@ function Requests() {
         try {
             await axiosClient.post(`/transactions/${id}/respond`, { action: backendAction });
             toast.success(`Talep ${status === 'approved' ? 'onaylandı' : 'reddedildi'}.`);
-            fetchAllRequests(); // Listeleri güncelle
+            fetchAllRequests(); 
         } catch (error) {
             console.error(error);
             toast.error("İşlem başarısız: " + (error.response?.data?.message || "Hata oluştu"));
         }
     };
 
-    // Durum Rozeti Rengi
     const getStatusBadge = (status) => {
         if (!status) return { color: 'gray', label: 'Bilinmiyor' };
         const s = status.toLowerCase();
@@ -74,7 +74,6 @@ function Requests() {
         }
     };
 
-    // İşlem Türü Rozeti (Satış, Kiralama, Takas)
     const getTypeBadge = (type) => {
         if (!type) return { color: 'gray', label: 'Genel' };
         const t = type.toUpperCase();
@@ -92,21 +91,18 @@ function Requests() {
     };
 
     // --- KART RENDER FONKSİYONU ---
-    // isIncoming = true ise -> Bana gelen talep (Onayla/Reddet butonları var)
-    // isIncoming = false ise -> Benim gönderdiğim talep (Sadece durum gösterilir)
     const renderRequestCard = (req, isIncoming) => {
         const statusBadge = getStatusBadge(req.status);
         const typeBadge = getTypeBadge(req.transaction_type);
         const startDate = req.start_date ? new Date(req.start_date).toLocaleDateString('tr-TR') : null;
         const endDate = req.end_date ? new Date(req.end_date).toLocaleDateString('tr-TR') : null;
 
-        // Karşı taraf kim? (Gelen talepse 'buyer', Giden talepse 'seller' veya 'product owner')
         const counterPartyLabel = isIncoming ? "Talep Eden:" : "Satıcı:";
-        const counterPartyName = isIncoming ? req.buyer_name : req.seller_name; // Backend'den seller_name gelmeli
+        const counterPartyName = req.other_party_name || (isIncoming ? req.buyer_name : req.seller_name);
 
         return (
             <Card key={req.id} shadow="sm" padding="lg" radius="md" withBorder mb="md">
-                <Grid gutter="md" align="center">
+                <Grid gutter="md" align="start"> {/* align="start" yaptık ki mesaj uzunsa düzen bozulmasın */}
                     
                     {/* 1. Ürün Görseli */}
                     <Grid.Col span={{ base: 12, sm: 2 }}>
@@ -139,23 +135,45 @@ function Requests() {
                             </Text>
                         )}
                         
-                        {/* Takas ise Teklif Edilen Ürün Bilgisi (Opsiyonel) */}
-                        {req.transaction_type === 'SWAP' && req.swap_product_title && (
-                            <Text size="sm" c="indigo" mt={5}>
-                                🔄 Teklif Edilen: <b>{req.swap_product_title}</b>
-                            </Text>
+                        {/* Takas ise Teklif Edilen Ürün Bilgisi */}
+                        {req.transaction_type === 'swap' && req.swap_product_title && (
+                            <Group mt={10} align="center">
+                                <Text size="sm" fw={600} c="indigo">🔄 Teklif Edilen:</Text>
+                                <Group gap={5}>
+                                    {req.swap_product_image && (
+                                        <Avatar src={getImageUrl(req.swap_product_image)} size="sm" radius="sm" />
+                                    )}
+                                    <Text size="sm" fw={500}>{req.swap_product_title}</Text>
+                                </Group>
+                            </Group>
                         )}
+
+                        {/* --- YENİ EKLENEN KISIM: TAKAS MESAJI --- */}
+                        {/* Eğer mesaj varsa göster */}
+                        {req.message && (
+                            <Blockquote 
+                                color="blue" 
+                                p="xs" 
+                                mt="sm" 
+                                iconSize={20}
+                                style={{ fontSize: '0.9rem', backgroundColor: '#f8f9fa' }}
+                            >
+                                {req.message}
+                            </Blockquote>
+                        )}
+                        {/* -------------------------------------- */}
+
                     </Grid.Col>
 
                     {/* 3. Fiyat ve Aksiyonlar */}
                     <Grid.Col span={{ base: 12, sm: 4 }} style={{ textAlign: 'right' }}>
-                        {req.transaction_type !== 'SWAP' && (
+                        {req.transaction_type !== 'swap' && req.price > 0 && (
                             <Text size="xl" fw={800} c="blue" mb="md">
                                 {req.price?.toLocaleString('tr-TR')} TL
                             </Text>
                         )}
 
-                        {/* BUTONLAR SADECE GELEN TALEPLERDE VE BEKLEMEDEYSE GÖRÜNÜR */}
+                        {/* Butonlar veya Durum */}
                         {isIncoming && req.status.toLowerCase() === 'pending' ? (
                             <Group justify="end" gap="xs">
                                 <Button 
@@ -172,7 +190,6 @@ function Requests() {
                                 </Button>
                             </Group>
                         ) : (
-                            // Giden talepse veya işlem bitmişse sadece durumu göster
                             <Badge color={statusBadge.color} size="lg" variant="filled">
                                 {statusBadge.label}
                             </Badge>
