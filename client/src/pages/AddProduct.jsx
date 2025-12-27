@@ -1,6 +1,5 @@
 // client/src/pages/AddProduct.jsx
 import { useState } from 'react'
-// DÜZELTME 1: Normal axios yerine kendi yazdığımız client'ı çağırıyoruz
 import axiosClient from '../api/axiosClient' 
 import { toast } from 'react-toastify'
 import { useNavigate } from 'react-router-dom'
@@ -8,7 +7,6 @@ import { useNavigate } from 'react-router-dom'
 function AddProduct() {
   const navigate = useNavigate()
   
-  // --- STATE VE MANTIK KISMI ---
   const [formData, setFormData] = useState({
     title: '', 
     description: '', 
@@ -45,12 +43,9 @@ function AddProduct() {
     }
 
     try {
-      // DÜZELTME 2: Token'ı elle almana gerek yok, axiosClient sessionStorage'dan kendisi alıyor.
-      // Ayrıca URL'in başını yazmana gerek yok, baseURL zaten ayarlı.
-      
-      await axiosClient.post('/products/', data, {
+      await axiosClient.post('/products/add', data, { // Backend route '/products/add' olarak güncellendiği için burayı da güncelledim
         headers: {
-            'Content-Type': 'multipart/form-data' // Dosya yüklediğimiz için bunu belirtmek iyi olur
+            'Content-Type': 'multipart/form-data'
         }
       })
       
@@ -137,7 +132,8 @@ function AddProduct() {
                     <option value="elektronik">📱 Elektronik</option>
                     <option value="mobilya">🛋️ Mobilya</option>
                     <option value="giyim">👕 Giyim</option>
-                    <option value="outdoor">🏕️ Outdoor / Kamp</option> 
+                    {/* GÜNCELLEME BURADA */}
+                    <option value="emlak">🏠 Emlak</option> 
                     <option value="arac">🚗 Araç & Parça</option>
                     <option value="diger">📦 Diğer</option>
                 </select>
