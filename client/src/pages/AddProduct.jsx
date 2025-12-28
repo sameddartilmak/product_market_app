@@ -1,4 +1,3 @@
-// client/src/pages/AddProduct.jsx
 import { useState } from 'react'
 import axiosClient from '../api/axiosClient' 
 import { toast } from 'react-toastify'
@@ -43,7 +42,7 @@ function AddProduct() {
     }
 
     try {
-      await axiosClient.post('/products/add', data, { // Backend route '/products/add' olarak güncellendiği için burayı da güncelledim
+      await axiosClient.post('/products/add', data, {
         headers: {
             'Content-Type': 'multipart/form-data'
         }
@@ -61,20 +60,16 @@ function AddProduct() {
     }
   }
 
-  // --- TASARIM (JSX) KISMI ---
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        
-        {/* Başlık Alanı */}
         <div style={styles.header}>
             <h2 style={styles.title}>Yeni İlan Oluştur</h2>
             <p style={styles.subtitle}>Ürününü binlerce kişiye ulaştır.</p>
         </div>
       
         <form onSubmit={handleSubmit} style={styles.form}>
-        
-            {/* Ürün Adı */}
+
             <div style={styles.formGroup}>
                 <label style={styles.label}>Ürün Başlığı</label>
                 <input 
@@ -84,8 +79,6 @@ function AddProduct() {
                     placeholder="Örn: iPhone 13 Pro - Hatasız"
                 />
             </div>
-
-            {/* Yan Yana Alanlar: Fiyat ve Tür */}
             <div style={styles.row}>
                 <div style={{flex: 1}}>
                     <label style={styles.label}>Fiyat (TL)</label>
@@ -105,7 +98,6 @@ function AddProduct() {
                 </div>
             </div>
 
-            {/* Komisyon Hesaplama Kartı */}
             {formData.price && (
                 <div style={styles.calculationCard}>
                     <div style={styles.calcRow}>
@@ -125,21 +117,18 @@ function AddProduct() {
                 </div>
             )}
 
-            {/* Kategori */}
             <div style={styles.formGroup}>
                 <label style={styles.label}>Kategori</label>
                 <select name="category" value={formData.category} onChange={handleChange} style={styles.select}>
                     <option value="elektronik">📱 Elektronik</option>
                     <option value="mobilya">🛋️ Mobilya</option>
                     <option value="giyim">👕 Giyim</option>
-                    {/* GÜNCELLEME BURADA */}
                     <option value="emlak">🏠 Emlak</option> 
                     <option value="arac">🚗 Araç & Parça</option>
                     <option value="diger">📦 Diğer</option>
                 </select>
             </div>
 
-            {/* Fotoğraf Yükleme Alanı */}
             <div style={styles.uploadBox}>
                 <div style={{textAlign: 'center'}}>
                     <span style={{fontSize: '2rem'}}>📷</span>
@@ -160,7 +149,6 @@ function AddProduct() {
                 )}
             </div>
 
-            {/* Açıklama */}
             <div style={styles.formGroup}>
                 <label style={styles.label}>Açıklama</label>
                 <textarea 
@@ -172,7 +160,6 @@ function AddProduct() {
                 ></textarea>
             </div>
 
-            {/* Buton */}
             <button type="submit" style={styles.button}>
                 İlanı Yayınla
             </button>
@@ -182,7 +169,6 @@ function AddProduct() {
   )
 }
 
-// --- MODERN STYLES OBJECT ---
 const styles = {
   container: {
     minHeight: '100vh',

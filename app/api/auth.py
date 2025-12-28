@@ -1,4 +1,3 @@
-# app/api/auth.py (DÜZELTİLMİŞ VE TEMİZLENMİŞ VERSİYON)
 import os
 import uuid
 from flask import Blueprint, request, jsonify, current_app
@@ -7,14 +6,10 @@ from app import db, bcrypt
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.utils import save_file, delete_file_from_url
 
-# =========================================================
-# 1. BLUEPRINT TANIMI (EN ÜSTTE!)
-# =========================================================
 auth_bp = Blueprint('auth', __name__)
 
-# =========================================================
-# 2. KAYIT OL (REGISTER)
-# =========================================================
+
+# 2. KAYIT OL 
 @auth_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -39,24 +34,19 @@ def register():
     
     return jsonify({'message': 'Kayıt başarılı! Giriş yapabilirsiniz.'}), 201
 
-# =========================================================
-# 3. GİRİŞ YAP (LOGIN)
-# =========================================================
+# 3. GİRİŞ YAP 
 @auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
     
-    # Kullanıcı Adı ve Şifre alıyoruz
     username = data.get('username')
     password = data.get('password')
     
     if not username or not password:
         return jsonify({'message': 'Kullanıcı adı ve şifre zorunludur!'}), 400
         
-    # Veritabanında ara
     user = User.query.filter_by(username=username).first()
     
-    # Kullanıcı varsa ve şifre doğruysa
     if user and user.check_password(password):
         access_token = create_access_token(identity=str(user.id))
         
@@ -77,12 +67,10 @@ def login():
             }
         }), 200
     else:
-        # Hatalı giriş
+
         return jsonify({'message': 'Hatalı kullanıcı adı veya şifre'}), 401
 
-# =========================================================
-# 4. PROFİL GETİR (GET)
-# =========================================================
+# 4. PROFİL GETİR
 @auth_bp.route('/profile', methods=['GET'])
 @jwt_required()
 def get_profile():
@@ -103,9 +91,7 @@ def get_profile():
         'created_at': user.created_at
     }), 200
 
-# =========================================================
 # 5. PROFİL GÜNCELLE (PUT)
-# =========================================================
 @auth_bp.route('/profile', methods=['PUT'])
 @jwt_required()
 def update_profile():
@@ -115,23 +101,18 @@ def update_profile():
     
     user = User.query.get_or_404(current_user_id)
     
-    # Form Data al
     bio = request.form.get('bio')
     location = request.form.get('location')
     
     if bio is not None: user.bio = bio
     if location is not None: user.location = location
 
-    # Resim Kaydet
     if 'profile_image' in request.files:
         file = request.files['profile_image']
         
         if file and file.filename:
-            # A) Eski resim varsa sil (Çöp oluşmasın)
             if user.profile_image:
                 delete_file_from_url(user.profile_image)
-            
-            # B) Yeni resmi 'profiles' klasörüne kaydet
             new_image_url = save_file(file, folder_name='profiles')
             
             if new_image_url:

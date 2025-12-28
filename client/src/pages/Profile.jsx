@@ -1,4 +1,3 @@
-// client/src/pages/Profile.jsx
 import { useEffect, useState, useContext } from 'react'
 import axiosClient from '../api/axiosClient' 
 import { AuthContext } from '../context/AuthContext'
@@ -15,53 +14,44 @@ function Profile() {
   const [imageFile, setImageFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
 
-  // --- KONUM İÇİN YENİ STATE'LER ---
-  const [cities, setCities] = useState([])       // Tüm İller
-  const [districts, setDistricts] = useState([]) // Seçilen İlin İlçeleri
+  const [cities, setCities] = useState([])       
+  const [districts, setDistricts] = useState([]) 
   
   const [selectedCity, setSelectedCity] = useState('')
   const [selectedDistrict, setSelectedDistrict] = useState('')
 
-  // --- 1. Profil ve İl/İlçe Verisini Çek ---
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // A) Profil Verisini Çek
         const resProfile = await axiosClient.get('/auth/profile')
         const userData = resProfile.data
         
         setProfileData(userData)
         setBio(userData.bio || '')
 
-        // Mevcut Konumu Parçala (Örn: "Seyhan, Adana" -> District: Seyhan, City: Adana)
+
         if (userData.location && userData.location.includes(',')) {
             const parts = userData.location.split(',').map(s => s.trim())
-            // Genelde format "İlçe, İl" şeklindedir
             if (parts.length >= 2) {
-                // Not: State'e atamayı şehir listesi yüklendikten sonra yapmak daha sağlıklı, 
-                // ama burada ön hazırlık yapıyoruz.
-                // Gerçek eşleştirme aşağıda yapılacak.
+
             }
         }
 
-        // B) İl/İlçe JSON Verisini Çek
-        const resLocation = await fetch('/ililce.json') // public klasöründen okur
+        const resLocation = await fetch('/ililce.json') 
         const locationData = await resLocation.json()
         setCities(locationData)
 
-        // C) Mevcut Konumu State'e Yerleştir
         if (userData.location) {
             const parts = userData.location.split(',').map(s => s.trim())
             if (parts.length === 2) {
                 const districtName = parts[0]
                 const cityName = parts[1]
 
-                // Şehri bul ve seç
                 const cityObj = locationData.find(c => c.name === cityName)
                 if (cityObj) {
                     setSelectedCity(cityObj.name)
-                    setDistricts(cityObj.districts) // O ilin ilçelerini yükle
-                    setSelectedDistrict(districtName) // İlçeyi seç
+                    setDistricts(cityObj.districts)
+                    setSelectedDistrict(districtName) 
                 }
             }
         }
@@ -75,16 +65,14 @@ function Profile() {
     fetchData()
   }, [])
 
-  // --- 2. İl Seçildiğinde Çalışır ---
   const handleCityChange = (e) => {
       const cityName = e.target.value
       setSelectedCity(cityName)
       
-      // Şehri bul ve ilçelerini güncelle
       const cityObj = cities.find(c => c.name === cityName)
       if (cityObj) {
           setDistricts(cityObj.districts)
-          setSelectedDistrict('') // İlçe seçimini sıfırla
+          setSelectedDistrict('')
       } else {
           setDistricts([])
           setSelectedDistrict('')
@@ -102,7 +90,6 @@ function Profile() {
   const handleSave = async (e) => {
     e.preventDefault() 
     
-    // Konumu birleştir: "İlçe, İl"
     let locationString = ''
     if (selectedCity && selectedDistrict) {
         locationString = `${selectedDistrict}, ${selectedCity}`
@@ -112,7 +99,7 @@ function Profile() {
 
     const formData = new FormData()
     formData.append('bio', bio)
-    formData.append('location', locationString) // Backend'e tek string gidiyor
+    formData.append('location', locationString)
     
     if (imageFile) {
         formData.append('profile_image', imageFile)
@@ -175,12 +162,10 @@ function Profile() {
         <div style={styles.bodyContent}>
             <form onSubmit={handleSave}>
                 
-                {/* --- KONUM SEÇİMİ (COMBO BOX) --- */}
                 <div style={styles.inputGroup}>
                     <label style={styles.label}>📍 Konum</label>
                     {isEditing ? (
                         <div style={{display: 'flex', gap: '10px'}}>
-                            {/* İL SEÇİMİ */}
                             <select 
                                 value={selectedCity} 
                                 onChange={handleCityChange} 
@@ -192,12 +177,11 @@ function Profile() {
                                 ))}
                             </select>
 
-                            {/* İLÇE SEÇİMİ */}
                             <select 
                                 value={selectedDistrict} 
                                 onChange={(e) => setSelectedDistrict(e.target.value)} 
                                 style={styles.select}
-                                disabled={!selectedCity} // İl seçilmeden aktif olmaz
+                                disabled={!selectedCity} 
                             >
                                 <option value="">İlçe Seçiniz</option>
                                 {districts.map(dist => (
@@ -326,9 +310,8 @@ const styles = {
   label: { display: 'block', fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '6px', textTransform: 'uppercase' },
   readOnlyBox: { padding: '12px 0', borderBottom: '1px solid #e5e7eb', color: '#374151', fontSize: '15px' },
   
-  // --- YENİ SELECT STİLİ ---
   select: {
-    flex: 1, // Yan yana eşit alan kaplasınlar
+    flex: 1,
     padding: '12px 10px',
     borderRadius: '10px',
     border: '1px solid #d1d5db',

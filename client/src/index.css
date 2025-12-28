@@ -2,23 +2,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* --- Renk Paleti --- */
-  --primary: #4f46e5;       /* Modern İndigo */
+  --primary: #4f46e5;       
   --primary-hover: #4338ca;
-  --secondary: #64748b;     /* Soğuk Gri */
-  --success: #10b981;       /* Zümrüt Yeşili */
-  --danger: #ef4444;        /* Canlı Kırmızı */
-  --warning: #f59e0b;       /* Amber */
-  
-  /* --- Arkaplan ve Metin --- */
-  --bg-body: #f3f4f6;       /* Sayfa Arkaplanı */
-  --bg-card: #ffffff;       /* Kart/Kutu Arkaplanı */
-  --text-main: #111827;     /* Ana Metin (Neredeyse Siyah) */
-  --text-muted: #6b7280;    /* İkincil Metin */
-  --border-color: #e5e7eb;  /* İnce Çizgiler */
-
-  /* --- Efektler --- */
-  --radius: 12px;           /* Genel Yuvarlaklık */
+  --secondary: #64748b;    
+  --success: #10b981;       
+  --danger: #ef4444;        
+  --warning: #f59e0b;       
+  --bg-body: #f3f4f6;       
+  --bg-card: #ffffff;      
+  --text-main: #111827;     
+  --text-muted: #6b7280;    
+  --border-color: #e5e7eb;  
+  --radius: 12px;          
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
@@ -36,10 +31,9 @@ body {
   color: var(--text-main);
   line-height: 1.6;
   min-height: 100vh;
-  -webkit-font-smoothing: antialiased; /* Yazıları daha net yapar */
+  -webkit-font-smoothing: antialiased; 
 }
 
-/* --- TİPOGRAFİ --- */
 h1, h2, h3, h4, h5, h6 {
   color: var(--text-main);
   font-weight: 700;
@@ -52,7 +46,6 @@ p {
   color: var(--text-muted);
 }
 
-/* --- ANA DÜZEN --- */
 .main-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -60,18 +53,16 @@ p {
   min-height: 85vh;
 }
 
-/* --- GRİD SİSTEMİ (ÜRÜN LİSTELEME) --- */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 30px;
 }
 
-/* --- KART TASARIMI --- */
 .product-card {
   background: var(--bg-card);
   border-radius: var(--radius);
-  border: 1px solid var(--border-color); /* Hafif çerçeve */
+  border: 1px solid var(--border-color);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
   transition: all 0.3s ease;
@@ -81,7 +72,7 @@ p {
 }
 
 .product-card:hover {
-  transform: translateY(-5px); /* Yukarı doğru hafif kalkma */
+  transform: translateY(-5px); 
   box-shadow: var(--shadow-lg);
   border-color: #d1d5db;
 }
@@ -103,7 +94,6 @@ p {
   transition: transform 0.5s ease;
 }
 
-/* Resmin üzerine gelince hafif yakınlaşsın */
 .product-card:hover .card-image {
   transform: scale(1.05);
 }
@@ -115,7 +105,6 @@ p {
   flex-direction: column;
 }
 
-/* --- FORM ELEMANLARI (Modern Standart) --- */
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -135,7 +124,6 @@ textarea {
   font-family: inherit;
 }
 
-/* Input Focus Efekti */
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--primary);
@@ -150,7 +138,6 @@ label {
   color: #374151;
 }
 
-/* --- BUTONLAR --- */
 button, .btn {
   display: inline-flex;
   align-items: center;
@@ -163,7 +150,7 @@ button, .btn {
   font-size: 0.95rem;
   transition: all 0.2s ease;
   text-decoration: none;
-  gap: 8px; /* İkon ve yazı arası boşluk */
+  gap: 8px;
 }
 
 button:disabled {
@@ -172,10 +159,9 @@ button:disabled {
 }
 
 button:active:not(:disabled) {
-  transform: scale(0.98); /* Tıklama hissi */
+  transform: scale(0.98); 
 }
 
-/* Buton Varyasyonları */
 .btn-primary {
   background-color: var(--primary);
   color: white;
@@ -205,16 +191,15 @@ button:active:not(:disabled) {
   background-color: #eef2ff; 
 }
 
-/* --- NAVBAR (Daha Modern) --- */
 .navbar {
-  background-color: #1f2937; /* Çok hafif açılmış siyah */
+  background-color: #1f2937; 
   border-bottom: 1px solid #374151;
   color: white;
   padding: 1rem 0;
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(10px); /* Buzlu cam efekti (destekleyen tarayıcılarda) */
+  backdrop-filter: blur(10px); 
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
 }
 
@@ -233,7 +218,7 @@ button:active:not(:disabled) {
   color: white;
   text-decoration: none;
   letter-spacing: -0.5px;
-  background: linear-gradient(to right, #fff, #a5b4fc); /* Logoya hafif degrade */
+  background: linear-gradient(to right, #fff, #a5b4fc); 
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -256,10 +241,9 @@ button:active:not(:disabled) {
 
 .nav-link:hover { 
   color: white;
-  background-color: rgba(255,255,255,0.1); /* Hoverda hafif arka plan */
+  background-color: rgba(255,255,255,0.1); 
 }
 
-/* --- YARDIMCI SINIFLAR --- */
 .text-center { textAlign: center; }
 .mt-2 { marginTop: 1rem; }
 .mb-4 { marginBottom: 2rem; }
@@ -272,10 +256,9 @@ button:active:not(:disabled) {
   font-weight: 700;
   text-transform: uppercase;
 }
-.badge-sale { background-color: #d1fae5; color: #065f46; } /* Açık Yeşil */
-.badge-rent { background-color: #e0e7ff; color: #3730a3; } /* Açık Mor */
+.badge-sale { background-color: #d1fae5; color: #065f46; } 
+.badge-rent { background-color: #e0e7ff; color: #3730a3; } 
 
-/* --- Toastify Özelleştirme (Opsiyonel) --- */
 .Toastify__toast {
   border-radius: 12px !important;
   font-family: 'Inter', sans-serif !important;

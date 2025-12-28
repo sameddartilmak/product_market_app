@@ -3,7 +3,6 @@ import axios from 'axios'
 import { Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
 
-// --- MANTINE IMPORTLARI ---
 import { 
   Container, 
   SimpleGrid, 
@@ -25,7 +24,6 @@ function Home() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   
-  // Arama ve Kategori State'leri
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('') 
 
@@ -38,15 +36,12 @@ function Home() {
     { id: 'diger', label: '📦 Diğer' }
   ]
 
-  // --- HELPER: Resim URL Düzeltici ---
-  // Backend'den "/static/..." gelirse başına sunucu adresini ekler.
   const getImageUrl = (url) => {
     if (!url) return 'https://placehold.co/300x200?text=Resim+Yok';
     if (url.startsWith('http')) return url;
     return `http://127.0.0.1:5000${url}`;
   };
 
-  // --- HELPER: İlan Tipi Rengi ve Metni ---
   const getListingBadge = (type) => {
     switch (type) {
         case 'rent': return { color: 'orange', label: 'Kiralık' };
@@ -95,11 +90,9 @@ function Home() {
     fetchProducts('', '')
   }
 
-  // --- RENDER ---
   return (
     <Container size="xl" py="xl">
-      
-      {/* --- 1. ARAMA ALANI --- */}
+
       <Container size="sm" mb={30}>
         <form onSubmit={handleSearch}>
             <Group justify="center" gap="xs">
@@ -131,7 +124,6 @@ function Home() {
         </form>
       </Container>
 
-      {/* --- 2. KATEGORİ BUTONLARI --- */}
       <Group justify="center" mb={40} gap="sm">
         <Button 
             onClick={() => handleCategoryClick('')}
@@ -157,7 +149,6 @@ function Home() {
         ))}
       </Group>
 
-      {/* --- BAŞLIK --- */}
       <Title order={2} ta="center" mb="lg" c="dimmed">
         {selectedCategory 
             ? `${categories.find(c => c.id === selectedCategory)?.label} Vitrini` 
@@ -165,7 +156,6 @@ function Home() {
         {searchTerm && <Text span size="md" fw={400}> (Arama sonucu: "{searchTerm}")</Text>}
       </Title>
 
-      {/* --- 3. ÜRÜN LİSTESİ (GRID) --- */}
       {loading ? (
         <Center h={200}>
             <Loader size="xl" type="dots" />
@@ -173,7 +163,6 @@ function Home() {
       ) : (
         <>
             {products.length > 0 ? (
-                // SimpleGrid: Responsive Izgara Sistemi
                 <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="lg">
                     {products.map((product) => {
                         const badgeInfo = getListingBadge(product.listing_type);
@@ -192,13 +181,12 @@ function Home() {
                                 onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                             >
                                 <Card.Section>
-                                    {/* Resim Alanı */}
                                     <Box pos="relative"> 
                                         <Image
                                             src={getImageUrl(product.image_url)}
                                             height={180}
                                             alt={product.title}
-                                            fit="cover" // Resmi kırparak doldurur (daha şık durur)
+                                            fit="cover" 
                                             fallbackSrc="https://placehold.co/300x200?text=Hata"
                                             bg="#f8f9fa" 
                                         />
@@ -241,7 +229,6 @@ function Home() {
                     })}
                 </SimpleGrid>
             ) : (
-                // Sonuç Bulunamadı Ekranı
                 <Container size="sm" ta="center" py={50} bg="gray.0" style={{ borderRadius: '10px' }}>
                     <Title order={3} mb="sm">Sonuç Bulunamadı 😔</Title>
                     <Text c="dimmed" mb="lg">Aradığınız kriterlere uygun ilan yok.</Text>

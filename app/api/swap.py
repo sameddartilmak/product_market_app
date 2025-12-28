@@ -6,12 +6,11 @@ from flask_cors import cross_origin
 
 swap_bp = Blueprint('swap', __name__)
 
-# YARDIMCI: Status String'e çevir
 def get_status_str(status):
     if hasattr(status, 'value'): return status.value
     return str(status)
 
-# --- TAKAS TEKLİFİ YAP (Sadece bu kalacak) ---
+# 1. TAKAS TEKLİFİ YAP 
 @swap_bp.route('/offer', methods=['POST', 'OPTIONS'])
 @cross_origin()
 @jwt_required()
@@ -34,7 +33,6 @@ def make_swap_offer():
     if not offered_product: return jsonify({'message': 'Teklif edilen ürün bulunamadı.'}), 404
     if offered_product.owner_id != current_user_id: return jsonify({'message': 'Sadece kendi ürününüzü teklif edebilirsiniz.'}), 403
 
-    # Aynı teklif kontrolü
     existing = SwapOffer.query.filter_by(
         target_product_id=target_product_id,
         offered_product_id=offered_product_id,
@@ -43,7 +41,6 @@ def make_swap_offer():
     if existing:
         return jsonify({'message': 'Bu takas teklifi zaten beklemede.'}), 400
 
-    # Kayıt
     new_offer = SwapOffer(
         target_product_id=target_product_id,
         offerer_id=current_user_id,

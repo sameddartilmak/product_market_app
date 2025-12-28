@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import axiosClient from '../api/axiosClient'; 
 import { toast } from 'react-toastify'
 
-// Mantine Bileşenleri (Daha temiz görünüm için)
 import { Badge, Button } from '@mantine/core';
 
 function AdminPanel() {
@@ -16,7 +15,6 @@ function AdminPanel() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // sessionStorage kullanıyoruz
     const role = sessionStorage.getItem('role');
     
     if (role !== 'admin') {
@@ -30,11 +28,8 @@ function AdminPanel() {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-        // 1. İstatistikleri çek
         const resStats = await axiosClient.get('/admin/stats')
         setStats(resStats.data)
-
-        // 2. Tablo verilerini çek
         try {
             const resData = await axiosClient.get('/admin/all-data')
             if(resData.data) {
@@ -52,7 +47,6 @@ function AdminPanel() {
     }
   }
 
-  // --- SİLME / İPTAL ETME FONKSİYONU ---
   const handleDelete = async (type, id) => {
     const confirmMsg = type === 'transaction' 
         ? "Bu işlemi veritabanından kalıcı olarak silmek/iptal etmek istiyor musunuz?" 
@@ -69,14 +63,11 @@ function AdminPanel() {
     }
   }
 
-  // --- HELPER: Ürün Durumunu ve Tipini Gösterir ---
   const renderProductStatus = (p) => {
-      // Eğer ürün satılmışsa (sold)
       if (p.status === 'sold') {
           return <Badge color="red" variant="filled">SATILDI</Badge>;
       }
       
-      // Satılmamışsa ilan türüne göre etiket göster
       const type = p.listing_type || 'sale'; 
 
       switch (type) {
@@ -86,11 +77,8 @@ function AdminPanel() {
       }
   };
 
-  // --- HELPER: İşlem Durumunu Gösterir ---
   const renderTransactionStatus = (status) => {
-      // Eğer status null/undefined geliyorsa
       if (!status) return <Badge color="gray">Durum Yok</Badge>;
-      
       const s = status.toUpperCase();
       if (s === 'PENDING') return <Badge color="yellow">Onay Bekliyor</Badge>;
       if (s === 'APPROVED') return <Badge color="green">Onaylandı</Badge>;
@@ -106,11 +94,8 @@ function AdminPanel() {
     </div>
   )
 
-  // --- TASARIM KISMI ---
   return (
     <div style={styles.wrapper}>
-      
-      {/* SOL MENÜ (SIDEBAR) */}
       <div style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
             <h2 style={styles.brand}>YÖNETİCİ</h2>
@@ -149,10 +134,8 @@ function AdminPanel() {
         </div>
       </div>
 
-      {/* SAĞ İÇERİK (CONTENT) */}
       <div style={styles.content}>
-        
-        {/* Başlık Alanı */}
+
         <div style={styles.topBar}>
             <h1 style={styles.pageTitle}>
                 {activeTab === 'dashboard' && 'Genel Bakış'}
@@ -163,7 +146,6 @@ function AdminPanel() {
             <div style={styles.userProfile}>Admin</div>
         </div>
 
-        {/* --- 1. DASHBOARD --- */}
         {activeTab === 'dashboard' && (
             <div style={styles.dashboardContainer}>
                 <div style={styles.statsGrid}>
@@ -192,7 +174,6 @@ function AdminPanel() {
             </div>
         )}
 
-        {/* --- 2. KULLANICILAR TABLOSU --- */}
         {activeTab === 'users' && (
             <div style={styles.tableContainer}>
                 <table style={styles.table}>
@@ -235,7 +216,6 @@ function AdminPanel() {
             </div>
         )}
 
-        {/* --- 3. ÜRÜNLER TABLOSU --- */}
         {activeTab === 'products' && (
             <div style={styles.tableContainer}>
                 <table style={styles.table}>
@@ -259,7 +239,6 @@ function AdminPanel() {
                                 <td style={styles.td}>{p.price} TL</td>
                                 <td style={styles.td}>{p.owner}</td>
                                 <td style={styles.td}>
-                                    {/* GÜNCELLEME: Burada artık helper fonksiyonu çağırıyoruz */}
                                     {renderProductStatus(p)}
                                 </td>
                                 <td style={styles.td}>
@@ -279,7 +258,6 @@ function AdminPanel() {
             </div>
         )}
 
-        {/* --- 4. İŞLEMLER TABLOSU --- */}
         {activeTab === 'transactions' && (
             <div style={styles.tableContainer}>
                 <table style={styles.table}>
@@ -303,7 +281,6 @@ function AdminPanel() {
                                 <td style={styles.td}>{t.seller}</td>
                                 <td style={{...styles.td, fontWeight:'bold'}}>{t.price} TL</td>
                                 <td style={styles.td}>
-                                    {/* GÜNCELLEME: Burada artık helper fonksiyonu çağırıyoruz */}
                                     {renderTransactionStatus(t.status)}
                                 </td>
                                 <td style={styles.td}>
@@ -328,7 +305,6 @@ function AdminPanel() {
   )
 }
 
-// --- CSS STYLES ---
 const styles = {
   wrapper: { display: 'flex', minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: '"Segoe UI", sans-serif' },
   sidebar: { width: '280px', backgroundColor: '#111827', color: '#e5e7eb', display: 'flex', flexDirection: 'column', position: 'fixed', height: '100%', left: 0, top: 0 },

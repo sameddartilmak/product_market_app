@@ -6,13 +6,10 @@ import MessageModal from '../components/MessageModal'
 import SwapOfferModal from '../components/SwapOfferModal'
 import { AuthContext } from '../context/AuthContext'
 import Swal from 'sweetalert2'
-
-// --- MANTINE DATES IMPORTLARI ---
 import { DatePickerInput } from '@mantine/dates';
 import '@mantine/dates/styles.css'; 
 import 'dayjs/locale/tr'; 
 
-// Backend URL'ini buraya sabitliyoruz (veya env'den alabilirsin)
 const API_BASE_URL = "http://127.0.0.1:5000";
 
 function ProductDetail() {
@@ -23,28 +20,23 @@ function ProductDetail() {
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   
-  // Modallar
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSwapModalOpen, setIsSwapModalOpen] = useState(false)
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
-  // --- KİRALAMA STATE ---
   const [dateRange, setDateRange] = useState([null, null]); 
   const [rentTotal, setRentTotal] = useState(0)
   const [rentDays, setRentDays] = useState(0)
   
   const [busyTimestamps, setBusyTimestamps] = useState([]); 
 
-  // --- YARDIMCI: Resim URL Düzeltici ---
-  // Eğer resim "/static" ile başlıyorsa başına backend adresini koyar
   const getImageUrl = (path) => {
       if (!path) return null;
-      if (path.startsWith('http')) return path; // Zaten tam link ise dokunma
+      if (path.startsWith('http')) return path; 
       return `${API_BASE_URL}${path}`;
   }
 
-  // --- 1. Ürün Bilgilerini Çek ---
   const fetchProduct = async () => {
     try {
       const res = await axiosClient.get(`/products/${id}`)
@@ -56,7 +48,6 @@ function ProductDetail() {
     }
   }
 
-  // --- 2. Dolu Günleri Çek ---
   const fetchAvailability = async () => {
     try {
         const res = await axiosClient.get(`/products/${id}/availability`);
@@ -78,8 +69,6 @@ function ProductDetail() {
     fetchAvailability(); 
   }, [id])
 
-
-  // --- TARİH VE KİRALAMA MANTIKLARI ---
   const getNativeDate = (dateInput) => {
       if (!dateInput) return null;
       if (typeof dateInput.toDate === 'function') return dateInput.toDate();
@@ -135,8 +124,6 @@ function ProductDetail() {
     }
   }, [dateRange, product, busyTimestamps])
 
-
-  // --- BUTON FONKSİYONLARI ---
   const handleBuy = async () => {
     if (!user) {
         Swal.fire({ icon: 'warning', title: 'Giriş Yap', text: 'Lütfen giriş yapın.' }).then((res) => { if(res.isConfirmed) navigate('/login') })
@@ -241,8 +228,7 @@ function ProductDetail() {
         </div>
 
         <div style={styles.mainGrid}>
-            
-            {/* SOL KOLON: GÖRSELLER */}
+
             <div style={styles.imageColumn}>
                 <div style={styles.mainImageWrapper}>
                     {isSold && <div style={styles.soldOverlay}>SATILDI</div>}
@@ -250,7 +236,6 @@ function ProductDetail() {
                         <>
                             {product.images.length > 1 && <button onClick={prevSlide} style={styles.navBtnLeft}>❮</button>}
                             
-                            {/* DÜZELTME BURADA: getImageUrl kullanıldı */}
                             <img 
                                 src={getImageUrl(product.images[currentImageIndex])} 
                                 alt={product.title} 
@@ -266,7 +251,6 @@ function ProductDetail() {
                 {product.images && product.images.length > 1 && (
                     <div style={styles.thumbnailRow}>
                         {product.images.map((img, index) => (
-                            // DÜZELTME BURADA: getImageUrl kullanıldı
                             <img 
                                 key={index} 
                                 src={getImageUrl(img)} 
@@ -277,8 +261,6 @@ function ProductDetail() {
                     </div>
                 )}
             </div>
-
-            {/* SAĞ KOLON: BİLGİ */}
             <div style={styles.infoColumn}>
                 <h1 style={styles.productTitle}>{product.title}</h1>
                 <div style={styles.ownerInfo}>
@@ -303,8 +285,7 @@ function ProductDetail() {
                         <>
                             {isRent ? (
                                 <div style={styles.rentForm}>
-                                    <h4 style={styles.actionTitle}>Müsaitlik Durumu ve Kiralama</h4>
-                                    
+                                    <h4 style={styles.actionTitle}>Müsaitlik Durumu ve Kiralama</h4>              
                                     <DatePickerInput
                                       key={busyTimestamps.length > 0 ? busyTimestamps.join('-') : "empty"}
                                       type="range"
@@ -344,7 +325,6 @@ function ProductDetail() {
             </div>
         </div>
 
-        {/* Mesaj Modalı */}
         {isModalOpen && product.owner && (
             <MessageModal 
                 isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} 
@@ -365,7 +345,6 @@ function ProductDetail() {
   )
 }
 
-// --- STYLES ---
 const styles = {
   loadingContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#6366f1', fontSize: '1.2rem' },
   pageBackground: { minHeight: '100vh', backgroundColor: '#f9fafb', padding: '40px 20px', fontFamily: '"Segoe UI", sans-serif' },

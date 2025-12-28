@@ -90,7 +90,6 @@ function Requests() {
         return url.startsWith('http') ? url : `http://127.0.0.1:5000${url}`;
     };
 
-    // --- KART RENDER FONKSİYONU ---
     const renderRequestCard = (req, isIncoming) => {
         const statusBadge = getStatusBadge(req.status);
         const typeBadge = getTypeBadge(req.transaction_type);
@@ -102,9 +101,8 @@ function Requests() {
 
         return (
             <Card key={req.id} shadow="sm" padding="lg" radius="md" withBorder mb="md">
-                <Grid gutter="md" align="start"> {/* align="start" yaptık ki mesaj uzunsa düzen bozulmasın */}
-                    
-                    {/* 1. Ürün Görseli */}
+                <Grid gutter="md" align="start">
+
                     <Grid.Col span={{ base: 12, sm: 2 }}>
                         <Avatar 
                             src={getImageUrl(req.product_image)} 
@@ -114,7 +112,6 @@ function Requests() {
                         >📦</Avatar>
                     </Grid.Col>
 
-                    {/* 2. Detaylar */}
                     <Grid.Col span={{ base: 12, sm: 6 }}>
                         <Group gap="xs" mb={5}>
                             <Text fw={700} size="lg">{req.product_title || "Ürün Adı Yok"}</Text>
@@ -128,14 +125,12 @@ function Requests() {
                             <Badge variant="outline" color="gray" size="sm">@{counterPartyName || 'Kullanıcı'}</Badge>
                         </Group>
 
-                        {/* Kiralama Tarihleri */}
                         {startDate && endDate && (
                             <Text size="sm" c="dimmed">
                                 📅 {startDate} - {endDate}
                             </Text>
                         )}
-                        
-                        {/* Takas ise Teklif Edilen Ürün Bilgisi */}
+
                         {req.transaction_type === 'swap' && req.swap_product_title && (
                             <Group mt={10} align="center">
                                 <Text size="sm" fw={600} c="indigo">🔄 Teklif Edilen:</Text>
@@ -148,8 +143,6 @@ function Requests() {
                             </Group>
                         )}
 
-                        {/* --- YENİ EKLENEN KISIM: TAKAS MESAJI --- */}
-                        {/* Eğer mesaj varsa göster */}
                         {req.message && (
                             <Blockquote 
                                 color="blue" 
@@ -161,11 +154,8 @@ function Requests() {
                                 {req.message}
                             </Blockquote>
                         )}
-                        {/* -------------------------------------- */}
-
                     </Grid.Col>
 
-                    {/* 3. Fiyat ve Aksiyonlar */}
                     <Grid.Col span={{ base: 12, sm: 4 }} style={{ textAlign: 'right' }}>
                         {req.transaction_type !== 'swap' && req.price > 0 && (
                             <Text size="xl" fw={800} c="blue" mb="md">
@@ -173,7 +163,6 @@ function Requests() {
                             </Text>
                         )}
 
-                        {/* Butonlar veya Durum */}
                         {isIncoming && req.status.toLowerCase() === 'pending' ? (
                             <Group justify="end" gap="xs">
                                 <Button 

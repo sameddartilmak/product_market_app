@@ -11,7 +11,6 @@ import Navbar from './components/Navbar.jsx'
 ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>
     <MantineProvider>
-      {/* 2. AuthProvider EN DIŞTA veya Navbar'ı kapsayacak şekilde olmalı */}
       <AuthProvider>
         <App />
       </AuthProvider>

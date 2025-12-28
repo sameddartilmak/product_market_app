@@ -21,7 +21,6 @@ function SwapOfferModal({ isOpen, onClose, targetProduct }) {
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(true);
 
-    // Kullanıcının kendi müsait ürünlerini çek
     useEffect(() => {
         if (isOpen) {
             fetchMyProducts();
@@ -31,7 +30,6 @@ function SwapOfferModal({ isOpen, onClose, targetProduct }) {
     const fetchMyProducts = async () => {
         try {
             const res = await axiosClient.get('/products/my-products');
-            // Sadece 'available' olanları filtrele
             const available = res.data.filter(p => p.status === 'available');
             setMyProducts(available);
         } catch (error) {
@@ -49,7 +47,7 @@ function SwapOfferModal({ isOpen, onClose, targetProduct }) {
         }
 
         try {
-            await axiosClient.post('/transactions/swap-offer', { // Endpointi kontrol ettim, genelde /swap-offer kullanılır
+            await axiosClient.post('/transactions/swap-offer', { 
                 target_product_id: targetProduct.id,
                 offered_product_id: selectedProductId,
                 message: message
@@ -65,7 +63,6 @@ function SwapOfferModal({ isOpen, onClose, targetProduct }) {
         if (!url) return null;
         return url.startsWith('http') ? url : `http://127.0.0.1:5000${url}`;
     };
-
     return (
         <Modal 
             opened={isOpen} 
@@ -89,7 +86,7 @@ function SwapOfferModal({ isOpen, onClose, targetProduct }) {
                                 <Text c="dimmed">Takas yapabileceğiniz aktif bir ürününüz yok.</Text>
                             </Stack>
                         ) : (
-                            // GÜZELLEŞTİRME BURADA: SimpleGrid ve Card yapısı
+
                             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                                 {myProducts.map(prod => {
                                     const isSelected = selectedProductId === prod.id;
@@ -133,7 +130,6 @@ function SwapOfferModal({ isOpen, onClose, targetProduct }) {
                         )
                     )}
                 </ScrollArea>
-
                 <Textarea 
                     label="Satıcıya Not (Opsiyonel)"
                     placeholder="Merhaba, bu ürünle takas düşünür müsün? Üstüne nakit de verebilirim..."

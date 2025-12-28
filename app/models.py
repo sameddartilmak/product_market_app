@@ -1,9 +1,7 @@
-# app/models.py
 from datetime import datetime
 import enum
 from app import db, bcrypt
 
-# --- ENUM SINIFLARI ---
 class ListingType(str, enum.Enum):
     SALE = 'sale'
     RENT = 'rent'
@@ -15,8 +13,7 @@ class OfferStatus(str, enum.Enum):
     REJECTED = 'rejected'
     COMPLETED = 'completed'
 
-# --- MODELLER ---
-
+#  MODELLER 
 class User(db.Model):
     __tablename__ = 'users'
 
@@ -26,13 +23,11 @@ class User(db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(20), default='customer')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Profil Bilgileri
+
     bio = db.Column(db.Text, nullable=True)             
     location = db.Column(db.String(100), nullable=True)   
     profile_image = db.Column(db.String(255), nullable=True) 
 
-    # İlişkiler
     products = db.relationship('Product', backref='owner', lazy=True)
 
     def set_password(self, password):
@@ -48,13 +43,12 @@ class Product(db.Model):
     title = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
     category = db.Column(db.String(50), nullable=False)
-    # Price float yerine Numeric kullanımı finansal işlemler için daha güvenlidir ama float kalsın dersen kalabilir.
     price = db.Column(db.Float, default=0.0) 
     
     listing_type = db.Column(db.String(20), default=ListingType.SALE.value)
-    status = db.Column(db.String(20), default='available') # available, sold, swapped, rented
+    status = db.Column(db.String(20), default='available')
     
-    image_url = db.Column(db.String(500), nullable=True) # Kapak resmi
+    image_url = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow) 
     
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -100,7 +94,6 @@ class Transaction(db.Model):
     price = db.Column(db.Numeric(10, 2), nullable=False)
     status = db.Column(db.String(20), default='COMPLETED')
     
-    # Kiralama tarihleri (transactions.py için zorunlu)
     start_date = db.Column(db.Date, nullable=True) 
     end_date = db.Column(db.Date, nullable=True)  
 

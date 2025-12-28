@@ -8,7 +8,7 @@ from operator import itemgetter
 
 transactions_bp = Blueprint('transactions', __name__)
 
-# --- 1. TAKAS TEKLİFİ OLUŞTURMA ---
+#  1. TAKAS TEKLİFİ OLUŞTURMA 
 @transactions_bp.route('/swap-offer', methods=['POST', 'OPTIONS'])
 @cross_origin()
 @jwt_required()
@@ -52,7 +52,7 @@ def create_swap_offer():
         return jsonify({'message': 'Sunucu hatası.', 'error': str(e)}), 500
 
 
-# --- 2. SATIN ALMA ---
+#  2. SATIN ALMA 
 @transactions_bp.route('/buy', methods=['POST', 'OPTIONS'])
 @cross_origin()
 @jwt_required()
@@ -88,7 +88,7 @@ def buy_product():
         return jsonify({'message': 'Hata oluştu.', 'error': str(e)}), 500
 
 
-# --- 3. KİRALAMA ---
+#  3. KİRALAMA 
 @transactions_bp.route('/rent', methods=['POST', 'OPTIONS'])
 @cross_origin()
 @jwt_required()
@@ -148,7 +148,7 @@ def rent_product():
         return jsonify({'message': 'Hata oluştu.', 'error': str(e)}), 500
 
 
-# --- 4. GELEN TALEPLER (INCOMING) ---
+#  4. GELEN TALEPLER
 @transactions_bp.route('/incoming', methods=['GET'])
 @cross_origin()
 @jwt_required()
@@ -156,7 +156,6 @@ def get_incoming_requests():
     current_user_id = int(get_jwt_identity())
     results = []
 
-    # A) Satın Alma / Kiralama
     transactions = Transaction.query.filter_by(seller_id=current_user_id).all()
     for t in transactions:
         product = Product.query.get(t.product_id)
@@ -178,7 +177,6 @@ def get_incoming_requests():
             'message': None
         })
 
-    # B) Takas Teklifleri
     swap_offers = SwapOffer.query.join(Product, SwapOffer.target_product_id == Product.id)\
                   .filter(Product.owner_id == current_user_id).all()
     
@@ -209,7 +207,7 @@ def get_incoming_requests():
     return jsonify(results), 200
 
 
-# --- 5. GİDEN TALEPLER (OUTGOING) ---
+#  5. GİDEN TALEPLER
 @transactions_bp.route('/outgoing', methods=['GET'])
 @cross_origin()
 @jwt_required()
@@ -217,7 +215,6 @@ def get_outgoing_requests():
     current_user_id = int(get_jwt_identity())
     results = []
 
-    # A) Satın Alma / Kiralama
     transactions = Transaction.query.filter_by(buyer_id=current_user_id).all()
     for t in transactions:
         product = Product.query.get(t.product_id)
@@ -239,7 +236,6 @@ def get_outgoing_requests():
             'message': None
         })
 
-    # B) Takas Teklifleri
     my_swaps = SwapOffer.query.filter_by(offerer_id=current_user_id).all()
     
     for s in my_swaps:
@@ -269,8 +265,7 @@ def get_outgoing_requests():
     return jsonify(results), 200
 
 
-# --- 6. TALEP ONAYLA / REDDET (GÜNCELLENDİ: Takas Tamamlama & Ürün Kaldırma) ---
-# --- 6. TALEP ONAYLA / REDDET ---
+#  6. TALEP ONAYLA / REDDET
 @transactions_bp.route('/<int:id>/respond', methods=['POST'])
 @cross_origin()
 @jwt_required()
@@ -279,9 +274,6 @@ def respond_to_request(id):
     data = request.get_json()
     action = data.get('action') 
 
-    print(f"--- Talep Yanıtlama Başladı (ID: {id}, Action: {action}) ---") # DEBUG 1
-
-    # Önce Transaction'da ara
     transaction = Transaction.query.get(id)
     target_record = None
     record_type = None
@@ -290,18 +282,15 @@ def respond_to_request(id):
         target_record = transaction
         record_type = 'transaction'
     else:
-        # Yoksa SwapOffer'da ara
         swap = SwapOffer.query.get(id)
         if swap:
             target_record = swap
             record_type = 'swap'
     
-    print(f"Tespit Edilen Kayıt Tipi: {record_type}") # DEBUG 2
 
     if not target_record:
         return jsonify({'message': 'Kayıt bulunamadı.'}), 404
 
-    # YETKİ KONTROLÜ
     if record_type == 'transaction':
         if target_record.seller_id != current_user_id:
             return jsonify({'message': 'Yetkisiz işlem.'}), 403
@@ -310,37 +299,29 @@ def respond_to_request(id):
         if target_p.owner_id != current_user_id:
             return jsonify({'message': 'Yetkisiz işlem.'}), 403
 
-    # İŞLEM
     if action == 'approve':
         target_record.status = 'APPROVED'
-        print("Kayıt durumu APPROVED yapıldı.") # DEBUG 3
         
-        # --- EĞER TAKASSA VE ONAYLANDIYSA ---
         if record_type == 'swap':
-            print("Takas işlemi algılandı, Transaction oluşturuluyor...") # DEBUG 4
             try:
-                # 1. Ürünleri 'sold' (Satıldı) yap
                 target_p = Product.query.get(target_record.target_product_id)
                 offered_p = Product.query.get(target_record.offered_product_id)
                 
                 if target_p: target_p.status = 'sold'
                 if offered_p: offered_p.status = 'sold'
 
-                # 2. Transaction Kaydı Oluştur
                 new_transaction = Transaction(
                     product_id=target_record.target_product_id,
-                    buyer_id=target_record.offerer_id, # Teklifi yapan 'alıcı' olur
-                    seller_id=current_user_id,         # Onaylayan 'satıcı' olur
-                    transaction_type='SWAP',           # Tipi: SWAP
-                    status='COMPLETED',                # Durumu: COMPLETED
-                    price=0                            # Fiyat: 0
+                    buyer_id=target_record.offerer_id, 
+                    seller_id=current_user_id,         
+                    transaction_type='SWAP',           
+                    status='COMPLETED',                
+                    price=0                           
                 )
                 
                 db.session.add(new_transaction)
-                print("Yeni Transaction session'a eklendi.") # DEBUG 5
 
             except Exception as e:
-                print(f"!!! KRİTİK HATA (Transaction Oluşamadı): {e}") # DEBUG 6
                 db.session.rollback()
                 return jsonify({'message': 'Takas onaylanırken hata oluştu.', 'error': str(e)}), 500
 
@@ -351,9 +332,7 @@ def respond_to_request(id):
     
     try:
         db.session.commit()
-        print("Veritabanı Commit Başarılı.") # DEBUG 7
     except Exception as e:
-        print(f"!!! COMMIT HATASI: {e}") # DEBUG 8
         db.session.rollback()
         return jsonify({'message': 'Veritabanı hatası.', 'error': str(e)}), 500
 

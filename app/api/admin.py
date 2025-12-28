@@ -1,14 +1,12 @@
 from flask import Blueprint, jsonify
 from app.models import User, Product, Transaction, ProductImage
-# SwapOffer modelini import etmiyoruz, hata riskini sıfırlamak için SQL kullanacağız.
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
-from sqlalchemy import func, text  # <-- text ÖNEMLİ: SQL sorgusu için şart
+from sqlalchemy import func, text 
 from app.utils import delete_file_from_url 
 
 admin_bp = Blueprint('admin', __name__)
 
-# --- YARDIMCI FONKSİYON: Admin Kontrolü ---
 def check_admin():
     current_user_id = get_jwt_identity()
     if isinstance(current_user_id, str):
@@ -18,7 +16,7 @@ def check_admin():
         return False
     return True
 
-# 1. İSTATİSTİKLER
+
 @admin_bp.route('/stats', methods=['GET'])
 @jwt_required()
 def get_admin_stats():
@@ -106,26 +104,21 @@ def delete_product(product_id):
     product = Product.query.get_or_404(product_id)
 
     try:
-        # Dosya yollarını yedekle
         images_to_delete = ProductImage.query.filter_by(product_id=product_id).all()
         image_urls = [img.image_url for img in images_to_delete]
-
-        # Transaction kayıtlarını temizle
+        
         Transaction.query.filter_by(product_id=product_id).delete(synchronize_session=False)
         if hasattr(Transaction, 'swap_product_id'):
             Transaction.query.filter(Transaction.swap_product_id == product_id).delete(synchronize_session=False)
-
-        # Swap Offers kayıtlarını temizle (SQL)
+            
         db.session.execute(text("DELETE FROM swap_offers WHERE offered_product_id = :pid"), {'pid': product_id})
         db.session.execute(text("DELETE FROM swap_offers WHERE target_product_id = :pid"), {'pid': product_id})
 
-        # Resim verilerini ve ürünü sil
         ProductImage.query.filter_by(product_id=product_id).delete(synchronize_session=False)
         db.session.delete(product)
         
         db.session.commit()
 
-        # Fiziksel dosyaları sil
         for url in image_urls:
             try:
                 delete_file_from_url(url)
@@ -137,6 +130,7 @@ def delete_product(product_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
 # 5. İŞLEM SİL
 @admin_bp.route('/delete-transaction/<int:transaction_id>', methods=['DELETE'])
 @jwt_required()

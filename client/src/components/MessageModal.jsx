@@ -1,5 +1,4 @@
 import { useState } from 'react'
-// DÜZELTME 1: Standart axios yerine, ayarlı client'ı import ediyoruz
 import axiosClient from '../api/axiosClient' 
 import { toast } from 'react-toastify'
 
@@ -16,12 +15,7 @@ function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) 
     }
 
     setSending(true)
-    try {
-        // DÜZELTME 2: 
-        // - axiosClient.post kullanıyoruz. 
-        // - Adresi sadece '/messages/send' yazıyoruz (axiosClient otomatik olarak http://127.0.0.1:5000/api ekler).
-        // - Header (Token) eklemeye gerek yok, axiosClient onu da otomatik yapar.
-        
+    try {    
         await axiosClient.post('/messages/send', {
             receiver_id: receiverId,
             product_id: productId,
@@ -34,7 +28,6 @@ function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) 
 
     } catch (error) {
         console.error("Mesaj Hatası:", error);
-        // Backend'den gelen hata mesajını gösterelim
         const errMsg = error.response?.data?.message || "Mesaj gönderilemedi.";
         toast.error(errMsg)
     } finally {
@@ -42,7 +35,6 @@ function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) 
     }
   }
 
-  // --- TASARIM KISMI (AYNEN KORUNDU) ---
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
@@ -85,8 +77,6 @@ function MessageModal({ isOpen, onClose, receiverId, productId, productTitle }) 
     </div>
   )
 }
-
-// --- STYLES ---
 const styles = {
   overlay: {
     position: 'fixed', 

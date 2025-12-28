@@ -7,7 +7,6 @@ import { AuthContext } from '../context/AuthContext'
 function Messages() {
   const navigate = useNavigate()
   
-  // Navbar'daki bildirim göstergesi için Context'i kullanıyoruz
   const { setUnreadCount } = useContext(AuthContext);
 
   const [conversations, setConversations] = useState([]) 
@@ -18,9 +17,7 @@ function Messages() {
 
   const messagesEndRef = useRef(null)
 
-  // --- GÜNCELLEME: sessionStorage Kullanımı ---
   const getUserID = () => {
-    // Artık kullanıcı bilgisini session'dan alıyoruz
     const userStr = sessionStorage.getItem('user');
     if (userStr) {
         try {
@@ -34,7 +31,6 @@ function Messages() {
   const currentUserId = getUserID();
 
   useEffect(() => {
-    // --- GÜNCELLEME: sessionStorage Kullanımı ---
     const token = sessionStorage.getItem('token');
     
     if (!token) {
@@ -55,14 +51,12 @@ function Messages() {
         const formattedData = res.data.map(conv => {
             return {
                 ...conv,
-                // Backend 'is_unread' gönderiyorsa onu al, yoksa varsayılan false olsun (veya true)
                 is_unread: conv.is_unread !== undefined ? conv.is_unread : true 
             };
         })
         
         setConversations(formattedData)
         
-        // Navbar'daki sayıyı güncelle (Kaç farklı kişiden okunmamış mesaj var)
         const totalUnread = formattedData.filter(c => c.is_unread).length;
         setUnreadCount(totalUnread);
         
@@ -76,13 +70,11 @@ function Messages() {
   const selectUser = async (user) => {
     setSelectedUser(user)
 
-    // Mesajı okundu olarak işaretle
     if (user.is_unread) {
         setConversations(prev => prev.map(c => 
             c.user_id === user.user_id ? { ...c, is_unread: false } : c
         ))
-        
-        // Navbar'daki bildirim sayısını 1 azalt
+
         setUnreadCount(prev => (prev > 0 ? prev - 1 : 0));
     }
 
@@ -119,7 +111,6 @@ function Messages() {
     }
   }
 
-  // --- HELPER: Avatar Gösterici ---
   const renderAvatar = (imageUrl, username, size = '45px') => {
       const hasImage = Boolean(imageUrl);
       const fullUrl = hasImage && !imageUrl.startsWith('http') 
@@ -153,8 +144,7 @@ function Messages() {
   return (
     <div style={styles.pageWrapper}>
         <div style={styles.container}>
-        
-        {/* SOL TARAF: KİŞİ LİSTESİ (SIDEBAR) */}
+
         <div style={styles.sidebar}>
             <div style={styles.sidebarHeader}>
                 <h3 style={styles.headerTitle}>Gelen Kutusu</h3>
@@ -202,11 +192,9 @@ function Messages() {
                                 </div>
                             </div>
 
-                            {/* --- Sağ Taraf: Saat ve Kırmızı Nokta --- */}
                             <div style={styles.metaInfo}>
                                 <span style={styles.metaTime}>14:30</span>
                                 {c.is_unread && (
-                                    // Sadece kırmızı nokta (içinde sayı yok)
                                     <div style={styles.unreadBadge}></div>
                                 )}
                             </div>
@@ -216,7 +204,6 @@ function Messages() {
             </div>
         </div>
 
-        {/* SAĞ TARAF: SOHBET EKRANI */}
         <div style={styles.chatArea}>
             {selectedUser ? (
                 <>
@@ -286,7 +273,6 @@ function Messages() {
   )
 }
 
-// --- STYLES ---
 const styles = {
   pageWrapper: {
     minHeight: '100vh',
@@ -308,7 +294,6 @@ const styles = {
     border: '1px solid #e5e7eb'
   },
   
-  // SOL TARAF (SIDEBAR)
   sidebar: { 
     width: '320px', 
     borderRight: '1px solid #e5e7eb', 
@@ -373,7 +358,6 @@ const styles = {
   userName: { fontSize: '0.95rem' },
   lastMsg: { fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' },
   
-  // --- SAĞ TARAF (METADATA) ---
   metaInfo: {
     display: 'flex',
     flexDirection: 'column',
@@ -386,8 +370,7 @@ const styles = {
     color: '#9ca3af',
     fontWeight: '500'
   },
-  
-  // GÜNCELLEME: Sadece Kırmızı Nokta Stili
+
   unreadBadge: {
     backgroundColor: '#ef4444', // Kırmızı
     width: '10px',              // Küçük boyut

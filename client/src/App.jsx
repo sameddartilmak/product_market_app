@@ -1,16 +1,9 @@
 import { Routes, Route, Link } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
-// App.jsx dosyasının en üstüne ekle:
 import IncomingRequests from './pages/IncomingRequests';
-
-// Mantine Layout Bileşenleri
 import { Box, Container, Title, Text, Button, Center, Stack } from '@mantine/core';
-
-// Bileşenler
 import Navbar from './components/Navbar'
-
-// Sayfalar
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register' 
@@ -22,16 +15,10 @@ import AdminPanel from './pages/AdminPanel'
 
 function App() {
   return (
-    // Tüm uygulamayı kapsayan kutu (Hafif gri arka plan)
     <Box bg="gray.0" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      
-      {/* Toast Bildirimleri */}
       <ToastContainer position="bottom-right" autoClose={3000} theme="colored" />
-      
-      {/* Üst Menü */}
       <Navbar />
       
-      {/* İçerik Alanı (Flex: 1 diyerek kalan tüm boşluğu kaplamasını sağlıyoruz) */}
       <Box style={{ flex: 1, paddingBottom: '40px' }}>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -63,8 +50,6 @@ function App() {
 
         </Routes>
       </Box>
-
-      {/* İstersen buraya ilerde bir <Footer /> bileşeni ekleyebilirsin */}
     
     </Box>
   )

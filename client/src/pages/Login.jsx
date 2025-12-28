@@ -5,7 +5,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import Swal from 'sweetalert2' 
 
-// --- MANTINE IMPORTLARI ---
 import { 
   TextInput, 
   PasswordInput, 
@@ -16,7 +15,8 @@ import {
   Text, 
   Container, 
   Group, 
-  Button 
+  Button,
+  Image
 } from '@mantine/core';
 
 function Login() {
@@ -28,8 +28,6 @@ function Login() {
   const { login } = useContext(AuthContext)
   const navigate = useNavigate()
 
-  // --- 1. SAYFA AÇILINCA "BENİ HATIRLA" VERİSİNİ KONTROL ET ---
-  // Burası localStorage'dan okumaya devam etmeli (Kalıcı olması için)
   useEffect(() => {
     const savedCreds = localStorage.getItem('remember_creds');
     if (savedCreds) {
@@ -49,32 +47,21 @@ function Login() {
     }
   }, []);
 
-  // --- MANTIK KISMI ---
   const handleSubmit = async (e) => {
     e.preventDefault() 
     setLoading(true);
 
     try {
-      // 1. İsteği Gönder
       const res = await axiosClient.post('/auth/login', {
         username: username,
         password: password
       })
 
-      // 2. Başarılıysa İşlemleri Yap
       if (res.data.access_token) {
-
-        // --- DEĞİŞİKLİK BURADA ---
-        // Token'ı artık sessionStorage'a kaydediyoruz.
-        // Böylece sekme kapanınca oturum biter ve diğer sekmelerle karışmaz.
         sessionStorage.setItem('token', res.data.access_token);
         
-        // Kullanıcı bilgisini de sessionStorage'a atalım (AuthContext kullanıyorsa orayı da güncellemen gerekebilir)
         sessionStorage.setItem('user', JSON.stringify(res.data.user));
 
-          // --- BENİ HATIRLA (KALICI OLMAYA DEVAM ETMELİ) ---
-          // Kullanıcı adı ve şifreyi hatırlamak için localStorage kullanıyoruz.
-          // Token sessionStorage'da olsa bile, burası sayesinde form otomatik dolar.
           if (rememberMe) {
               const creds = btoa(`${username}:${password}`);
               localStorage.setItem('remember_creds', creds);
@@ -82,7 +69,6 @@ function Login() {
               localStorage.removeItem('remember_creds');
           }
 
-          // Rolü güvenli hale getir
           const serverRole = res.data.user.role || "";
           const safeRole = serverRole.toString().trim().toLowerCase();
           
@@ -124,9 +110,16 @@ function Login() {
     }
   }
 
-  // --- TASARIM KISMI ---
   return (
     <Container size={420} my={40}>
+      <Group justify="center" mb="md">
+        <Image 
+            src="/logo1.png" 
+            h={100}        
+            w="auto"
+            fit="contain"
+        />
+      </Group>
       <Title ta="center" order={2}>
         Tekrar Hoşgeldiniz! 👋
       </Title>
@@ -163,7 +156,13 @@ function Login() {
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.currentTarget.checked)}
                 />
-                <Anchor component="button" size="sm" onClick={(e) => { e.preventDefault(); toast.info("Bu özellik yakında gelecek!"); }}>
+                
+                <Anchor 
+                    component="button" 
+                    type="button" 
+                    size="sm" 
+                    onClick={(e) => { e.preventDefault(); toast.info("Bu özellik yakında gelecek!"); }}
+                >
                     Şifremi Unuttum?
                 </Anchor>
             </Group>

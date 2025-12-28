@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import axiosClient from '../api/axiosClient' // DÜZELTME: Global Client kullanıldı
+import axiosClient from '../api/axiosClient'
 import { toast } from 'react-toastify'
 import { useNavigate, Link } from 'react-router-dom'
 
-// --- MANTINE IMPORTLARI ---
 import { 
   TextInput, 
   PasswordInput, 
@@ -25,12 +24,9 @@ function Register() {
     password: ''
   })
 
-  // YENİ: Email hatasını tutacak state
   const [emailError, setEmailError] = useState('')
 
-  // --- MANTIK KISMI ---
   const handleChange = (e) => {
-    // Kullanıcı yazı yazarken hata mesajını temizle
     if (e.target.name === 'email') {
         setEmailError('');
     }
@@ -41,9 +37,7 @@ function Register() {
     })
   }
 
-  // YENİ: Email Doğrulama Fonksiyonu (Regex)
   const validateEmail = (email) => {
-    // Format: yazı@yazı.yazı (Örn: a@b.com)
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(email);
   };
@@ -51,19 +45,16 @@ function Register() {
   const handleRegister = async (e) => {
     e.preventDefault()
 
-    // 1. Email Format Kontrolü
     if (!validateEmail(formData.email)) {
         setEmailError('Lütfen geçerli bir e-posta adresi girin (örn: isim@gmail.com)');
-        return; // İşlemi durdur
+        return; 
     }
 
     try {
-      // DÜZELTME: Uzun URL yerine axiosClient kullanıldı
       await axiosClient.post('/auth/register', formData)
       
       toast.success("Kayıt başarılı! Giriş yapılıyor...")
       
-      // Başarılı olursa 1.5 saniye sonra Login sayfasına yönlendir
       setTimeout(() => {
         navigate('/login')
       }, 1500)
@@ -77,11 +68,9 @@ function Register() {
     }
   }
 
-  // --- TASARIM KISMI ---
   return (
     <Container size={420} my={40}>
       
-      {/* Başlık ve Yönlendirme */}
       <Title ta="center" order={2}>
         Aramıza Katılın! 🚀
       </Title>
@@ -93,7 +82,6 @@ function Register() {
         </Anchor>
       </Text>
 
-      {/* Form Kartı */}
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
         <form onSubmit={handleRegister}>
           <Stack gap="md"> 
@@ -115,7 +103,6 @@ function Register() {
               value={formData.email} 
               onChange={handleChange} 
               required 
-              // YENİ: Hata varsa kutucuk kırmızı olur ve mesaj yazar
               error={emailError} 
             />
 

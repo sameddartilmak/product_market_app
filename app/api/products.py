@@ -4,22 +4,19 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_, text
 from datetime import datetime, timedelta
 
-# Gerekli Modelleri ve DB'yi import et
 from app.models import Product, ProductImage, User, Transaction
 from app import db
 
-# Utils dosyasından fonksiyonları çekiyoruz
 from app.utils import save_file, delete_file_from_url
 
 products_bp = Blueprint('products', __name__)
 
-# --- 1. ÜRÜNLERİ LİSTELE ---
+# 1. ÜRÜNLERİ LİSTELE
 @products_bp.route('/', methods=['GET'])
 def get_products():
     search_query = request.args.get('search', '')
     category_filter = request.args.get('category', '') 
 
-    # Sadece 'available' (satışta/kirada) olanları getir
     q = Product.query.filter_by(status='available')
 
     if category_filter:
@@ -50,14 +47,13 @@ def get_products():
         })
     return jsonify(output), 200
 
-# --- 2. ÜRÜN OLUŞTUR (ID KLASÖRLEME İLE) ---
-@products_bp.route('/add', methods=['POST']) # Route'u '/add' olarak belirginleştirdim
+# 2. ÜRÜN OLUŞTUR
+@products_bp.route('/add', methods=['POST'])
 @jwt_required()
 def create_product():
     try:
         current_user_id = int(get_jwt_identity())
         
-        # Form verilerini al
         title = request.form.get('title')
         description = request.form.get('description')
         price = request.form.get('price')
@@ -67,7 +63,6 @@ def create_product():
         if not title or not price:
             return jsonify({'message': 'Başlık ve fiyat zorunludur.'}), 400
 
-        # 1. ADIM: Önce ürünü veritabanına kaydet (ID oluşması için şart)
         new_product = Product(
             title=title,
             description=description,
@@ -79,9 +74,8 @@ def create_product():
         )
         
         db.session.add(new_product)
-        db.session.commit() # BURADA new_product.id OLUŞUYOR
+        db.session.commit()
 
-        # 2. ADIM: ID oluştuktan sonra resimleri o ID klasörüne kaydet
         files = request.files.getlist('images')
         saved_urls = []
 
@@ -89,20 +83,15 @@ def create_product():
             for file in files:
                 if not file or not file.filename: continue
 
-                # Utils'teki save_file fonksiyonuna 'specific_id' gönderiyoruz
-                # Bu sayede 'static/uploads/products/16/' gibi bir yola kayıt yapacak
                 file_url = save_file(file, folder_name='products', specific_id=new_product.id)
                 
                 if file_url:
                     saved_urls.append(file_url)
-                    # Resim tablosuna kaydet
                     img_entry = ProductImage(image_url=file_url, product_id=new_product.id)
                     db.session.add(img_entry)
             
-            # Resim kayıtlarını onayla
             db.session.commit()
 
-        # 3. ADIM: İlk yüklenen resmi ürünün kapak fotoğrafı yap
         if saved_urls:
             new_product.image_url = saved_urls[0]
             db.session.commit()
@@ -117,13 +106,12 @@ def create_product():
         print(f"HATA OLUŞTU: {e}")
         return jsonify({'message': 'Ürün oluşturulurken hata.', 'error': str(e)}), 500
 
-# --- 3. TEK ÜRÜN DETAYI ---
+# 3. TEK ÜRÜN DETAYI
 @products_bp.route('/<int:product_id>', methods=['GET'])
 def get_single_product(product_id):
     product = Product.query.get_or_404(product_id)
     owner = User.query.get(product.owner_id)
-    
-    # İlişkili resimleri çek
+
     images_list = [img.image_url for img in product.images]
 
     return jsonify({
@@ -132,8 +120,8 @@ def get_single_product(product_id):
         'description': product.description,
         'category': product.category,
         'price': product.price,
-        'image_url': product.image_url, # Kapak resmi
-        'images': images_list,          # Tüm resimler
+        'image_url': product.image_url,
+        'images': images_list,          
         'status': product.status,
         'created_at': product.created_at,
         'listing_type': product.listing_type, 
@@ -145,7 +133,7 @@ def get_single_product(product_id):
         }
     }), 200
 
-# --- 4. BENİM ÜRÜNLERİM ---
+# 4. BENİM ÜRÜNLERİM
 @products_bp.route('/my-products', methods=['GET'])
 @jwt_required()
 def get_my_products():
@@ -167,7 +155,7 @@ def get_my_products():
         })
     return jsonify(output), 200
 
-# --- 5. ÜRÜN GÜNCELLE ---
+# 5. ÜRÜN GÜNCELLE 
 @products_bp.route('/<int:product_id>', methods=['PUT'])
 @jwt_required()
 def update_product(product_id):
@@ -190,48 +178,37 @@ def update_product(product_id):
     else:
         return jsonify({'message': 'Veri gönderilmedi.'}), 400
 
-# --- 6. ÜRÜN SİL (GÜVENLİ SİLME) ---
+#  6. ÜRÜN SİL
 @products_bp.route('/<int:product_id>', methods=['DELETE'])
 @jwt_required()
 def delete_product(product_id):
     current_user_id = int(get_jwt_identity())
 
     product = Product.query.get_or_404(product_id)
-    
-    # Sadece sahibi veya admin silebilir (Admin kontrolü eklenebilir)
+
     if product.owner_id != current_user_id:
         return jsonify({'message': 'Bu ürünü silme yetkiniz yok.'}), 403
 
     try:
-        # A) Resim URL'lerini yedekle (Dosyaları silmek için)
         images_to_delete = ProductImage.query.filter_by(product_id=product_id).all()
         image_urls = [img.image_url for img in images_to_delete]
 
-        # B) Veritabanı Temizliği (Foreign Key Hatalarını Önle)
-        
-        # 1. İlişkili İşlemleri (Transaction) Sil
         Transaction.query.filter_by(product_id=product_id).delete(synchronize_session=False)
         
-        # Eğer modelde swap_product_id varsa onları da sil
         if hasattr(Transaction, 'swap_product_id'):
             Transaction.query.filter(Transaction.swap_product_id == product_id).delete(synchronize_session=False)
 
-        # 2. Swap Offers Tablosunu Temizle (Raw SQL ile)
-        # SQLAlchemy modelinde relationship tanımlı değilse hata vermemesi için raw SQL kullanıyoruz
         try:
             db.session.execute(text("DELETE FROM swap_offers WHERE offered_product_id = :pid"), {'pid': product_id})
             db.session.execute(text("DELETE FROM swap_offers WHERE target_product_id = :pid"), {'pid': product_id})
         except Exception as sql_err:
             print(f"Swap tablosu temizlenirken uyarı: {sql_err}")
 
-        # 3. Resim Kayıtlarını ve Ürünü DB'den Sil
         ProductImage.query.filter_by(product_id=product_id).delete(synchronize_session=False)
         db.session.delete(product)
         
         db.session.commit()
 
-        # C) Fiziksel Dosyaları ve Klasörü Sil
-        # utils.py içindeki delete_file_from_url fonksiyonu klasör boşalınca klasörü de siliyor.
         for url in image_urls:
             try:
                 delete_file_from_url(url)
@@ -245,11 +222,10 @@ def delete_product(product_id):
         print(f"SİLME HATASI: {e}")
         return jsonify({'message': 'Silme işlemi başarısız.', 'error': str(e)}), 500
     
-# --- 7. TAKVİM DOLULUK BİLGİSİ ---
+#  7. TAKVİM DOLULUK BİLGİSİ
 @products_bp.route('/<int:product_id>/availability', methods=['GET'])
 def get_product_availability(product_id):
     try:
-        # Sadece onaylanmış kiralamaları çek
         rentals = Transaction.query.filter_by(product_id=product_id, status='APPROVED').all()
         
         booked_dates = []
@@ -257,8 +233,7 @@ def get_product_availability(product_id):
         for rental in rentals:
             if not rental.start_date or not rental.end_date:
                 continue
-            
-            # Başlangıç ve bitiş arasındaki tüm günleri listeye ekle
+
             current_date = rental.start_date
             while current_date <= rental.end_date:
                 booked_dates.append(current_date.strftime('%Y-%m-%d'))

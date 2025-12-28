@@ -2,7 +2,7 @@ import { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
-// Mantine Bileşenleri
+
 import { 
   Container, 
   Group, 
@@ -11,15 +11,14 @@ import {
   Avatar, 
   Menu, 
   Box,
-  Indicator // Bildirim noktası için geri ekledik
+  Indicator,
+  Image
 } from '@mantine/core';
 
 function Navbar() {
-  // unreadCount'u Context'ten çekiyoruz (Mesajlarda kırmızı nokta için)
   const { user, logout, unreadCount } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // Profil Resmi URL Düzeltici
   const getAvatarUrl = (url) => {
     if (!url) return null;
     return url.startsWith('http') ? url : `http://127.0.0.1:5000${url}`;
@@ -43,21 +42,34 @@ function Navbar() {
     >
       <Container size="lg" h={70}>
         <Group h="100%" justify="space-between">
-          
-          {/* --- 1. LOGO --- */}
-          <Text 
+         <Group 
+            gap="xs" 
             component={Link} 
             to={user?.role === 'admin' ? "/admin" : "/"} 
-            size="xl" 
-            fw={900} 
-            variant="gradient" 
-            gradient={{ from: 'blue', to: 'cyan', deg: 90 }}
-            style={{ textDecoration: 'none' }}
-          >
-             {user?.role === 'admin' ? '🛡️ YÖNETİM' : '📦 PAZARYERİ'}
-          </Text>
+            style={{ textDecoration: 'none', cursor: 'pointer' }}
+          >   
+             <Image 
+                src="/logo1.png"
+                alt="Logo" 
+                w={160} 
+                h={60} 
+                fit="contain" 
+                fallbackSrc="https://placehold.co/40?text=Logo"
+             />
 
-          {/* --- 2. NAVİGASYON --- */}
+            {user?.role === 'admin' && (
+                <Text 
+                  size="xl" 
+                  fw={900} 
+                  variant="gradient" 
+                  gradient={{ from: 'red', to: 'orange', deg: 90 }} 
+                >
+                   🛡️ YÖNETİM
+                </Text>
+            )}
+          </Group>
+
+
           <Group gap="md">
             
             {user ? (
@@ -69,14 +81,12 @@ function Navbar() {
                     <Button variant="subtle" component={Link} to="/" color="gray">
                       Vitrin
                     </Button>
-
-                    {/* Mesajlar Butonu (Kırmızı Nokta Eklendi) */}
                     <Indicator 
                         color="red" 
                         size={9} 
                         offset={6} 
-                        processing // Yanıp sönme efekti
-                        disabled={!unreadCount || unreadCount === 0} // 0 ise gösterme
+                        processing 
+                        disabled={!unreadCount || unreadCount === 0} 
                     >
                         <Button variant="subtle" component={Link} to="/messages" color="gray">
                           💬 Mesajlar
@@ -95,7 +105,6 @@ function Navbar() {
                   </>
                 )}
 
-                {/* --- PROFİL MENÜSÜ --- */}
                 <Menu shadow="md" width={240} trigger="hover" openDelay={100} closeDelay={400}>
                   <Menu.Target>
                     <Button 
@@ -125,8 +134,6 @@ function Navbar() {
                         <Menu.Item component={Link} to="/profile">
                             👤 Profilim
                         </Menu.Item>
-
-                        {/* TEK ÇATI ALTINDA BİRLEŞTİRİLDİ */}
                         <Menu.Item component={Link} to="/requests">
                           📋 Taleplerim <Text span c="dimmed" size="xs" ml={5}>(Alım/Satım/Takas)</Text>
                         </Menu.Item>        
@@ -161,5 +168,4 @@ function Navbar() {
     </Box>
   );
 }
-
 export default Navbar;

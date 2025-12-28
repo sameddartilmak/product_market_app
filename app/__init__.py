@@ -28,16 +28,14 @@ def create_app(config_class=Config):
     CORS(app, resources={r"/*": {"origins": "*"}}, 
          allow_headers=["Content-Type", "Authorization"], 
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
-    # -------------------------------
+
 
     db.init_app(app)
     migrate.init_app(app, db)
     bcrypt.init_app(app)
     jwt.init_app(app)
 
-    # --- Blueprint Kayıtları ---
-    
-
+#  Blueprint Kayıtları 
     from .api.auth import auth_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
 

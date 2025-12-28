@@ -1,4 +1,3 @@
-# app/api/messages.py
 from flask import Blueprint, request, jsonify
 from app import db
 from app.models import Message, User, Product
@@ -51,21 +50,17 @@ def get_conversations():
     if isinstance(current_user_id, str):
          current_user_id = int(current_user_id)
 
-    # Tüm mesajlarımı çek
     all_msgs = Message.query.filter(
         or_(Message.sender_id == current_user_id, Message.receiver_id == current_user_id)
     ).order_by(Message.created_at.desc()).all()
 
-    # Benzersiz kişileri ayıkla
     conversations = {}
     for msg in all_msgs:
-        # Karşı taraf kim?
         other_user_id = msg.receiver_id if msg.sender_id == current_user_id else msg.sender_id
         
         if other_user_id not in conversations:
             other_user = User.query.get(other_user_id)
             if other_user:
-                # Okunmamış mesaj sayısını hesapla
                 unread_count = Message.query.filter(
                     Message.sender_id == other_user_id,
                     Message.receiver_id == current_user_id,
@@ -78,11 +73,8 @@ def get_conversations():
                     'profile_image': other_user.profile_image,
                     'last_message': msg.content,
                     'date': msg.created_at.strftime('%Y-%m-%d %H:%M'),
-                    # --- EKLENEN KISIM BURASI ---
-                    # Frontend bu verileri bekliyor, göndermezsek varsayılanı kullanır
                     'is_unread': unread_count > 0,
                     'unread_count': unread_count
-                    # ----------------------------
                 }
     
     return jsonify(list(conversations.values())), 200
@@ -97,7 +89,6 @@ def get_chat_history(other_user_id):
     if isinstance(current_user_id, str):
          current_user_id = int(current_user_id)
     
-    # Sohbet açıldığında mesajları okundu (is_read=True) yap
     unread_messages = Message.query.filter(
         Message.sender_id == other_user_id,
         Message.receiver_id == current_user_id,
@@ -109,8 +100,8 @@ def get_chat_history(other_user_id):
             for msg in unread_messages:
                 msg.is_read = True
             
-            db.session.commit() # Veritabanına kalıcı olarak kaydet
-            print(f"{len(unread_messages)} adet mesaj okundu olarak işaretlendi.") # Terminalde bu yazıyı görmelisin
+            db.session.commit()
+            print(f"{len(unread_messages)} adet mesaj okundu olarak işaretlendi.")
         except Exception as e:
             db.session.rollback()
             print(f"HATA: Mesajlar güncellenemedi! {e}")    
@@ -133,5 +124,4 @@ def get_chat_history(other_user_id):
             'is_me': (msg.sender_id == current_user_id), 
             'date': msg.created_at.strftime('%H:%M')
         })
-
     return jsonify(results), 200
